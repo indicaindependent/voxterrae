@@ -1,0 +1,20 @@
+# wrangler.toml.example
+# Copy to wrangler.toml and fill in your values
+# NEVER commit wrangler.toml — it contains your real IDs
+
+name = "voxterrae-worker"
+main = "src/worker.js"
+compatibility_date = "2024-01-01"
+account_id = "YOUR_CF_ACCOUNT_ID"
+
+[vars]
+ENVIRONMENT = "production"
+
+# Secrets (set via: wrangler secret put SECRET_NAME)
+# ANTHROPIC_API_KEY
+# WORKER_SECRET
+
+[[d1_databases]]
+binding = "DB"
+database_name = "voxterrae-db"
+database_id = "YOUR_D1_DATABASE_ID"
