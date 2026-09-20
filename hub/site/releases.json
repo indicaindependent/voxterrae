@@ -22,8 +22,8 @@
      "file": "voxterrae-src-0.1.0.zip",
      "kind": "source",
      "platform": "any",
-     "size": 52339,
-     "sha256": "92bb8c202328c4848683b399f911bf805be39d0e28bbc3f2153782ef7b0fc1ab",
+     "size": 52350,
+     "sha256": "ae77fcb8d83ebf605edb49ad2720fd8503ab55cff0a49138a6ee82c2c0d1b567",
      "note": "Source bundle. Build the Windows portable exe with build\\build_win.ps1 (needs Python 3.11+)."
     }
    ],
