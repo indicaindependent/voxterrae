@@ -1,0 +1,13 @@
+[project]
+name = "voxterrae"
+version = "0.1.0"
+description = "VoxTerrae — the WarHeatMap.app IRC client"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+dependencies = []
+[project.optional-dependencies]
+ui = ["PySide6>=6.8", "qasync>=0.27", "keyring>=25"]
+dev = ["pytest>=8"]
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+markers = ["live: talks to the HOME network"]

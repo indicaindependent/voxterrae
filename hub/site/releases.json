@@ -1,0 +1,39 @@
+{
+ "product": "VoxTerrae",
+ "latest": "0.1.0",
+ "releases": [
+  {
+   "version": "0.1.0",
+   "date": "2026-09-20",
+   "title": "First public source release",
+   "notes": [
+    "Connects to HOME (irc.warheatmap.app, IRCv3) and EFnet (server pool with first-use certificate pinning) at the same time",
+    "Local history: SQLite with full-text search, replay without duplicates, server history fetched only for what you missed",
+    "Reactions, replies with context, typing indicators, read markers on HOME rooms; classic mode on EFnet",
+    "Mention and direct-message notifications, tray badge, remembered window geometry",
+    "Commands: /search /ask /reply /react /join /me; right-click a message for Reply, React, Copy",
+    "Answers CTCP VERSION automatically (EFnet drone monitors check every new client)",
+    "In-app update check against this site\u2019s /api/latest.json: one plain GET, nothing downloaded or installed for you"
+   ],
+   "assets": [
+    {
+     "file": "voxterrae-src-0.1.0.zip",
+     "kind": "source",
+     "platform": "any",
+     "size": 47577,
+     "sha256": "438407330c1c3998edc45903c5ffff990f21696bf9977bc2b77dfdfc72fcdc18",
+     "note": "Source bundle. Build the Windows portable exe with build\\build_win.ps1 (needs Python 3.11+)."
+    }
+   ],
+   "planned": [
+    {
+     "file": "VoxTerrae.exe",
+     "kind": "portable",
+     "platform": "windows-x64",
+     "status": "planned",
+     "note": "Portable single-file exe, built from this source on Windows 11. Unsigned until the signing step in the roadmap lands; see the SmartScreen note."
+    }
+   ]
+  }
+ ]
+}
