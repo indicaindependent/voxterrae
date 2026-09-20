@@ -20,28 +20,40 @@ def main(argv=None):
     ap.add_argument("--welcome", action="store_true")
     a = ap.parse_args(argv)
     from PySide6.QtWidgets import QApplication
-    from PySide6.QtCore import QSettings
+    from PySide6.QtCore import QSettings, Qt
+    from PySide6.QtGui import QGuiApplication
     import qasync
+    from voxterrae import __version__
+    from voxterrae.app import platform as plat
+    from voxterrae.app.prefs import Prefs
+    # hardening first: file log, crash dialog, taskbar identity, HiDPI rounding (all no-ops where not applicable)
+    plat.setup_logging(); plat.set_app_id(); plat.install_crash_guard(__version__, show_dialog=not a.shot)
+    QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+    app = QApplication(sys.argv[:1]); app.setApplicationName("VoxTerrae"); app.setOrganizationName("VoxTerrae"); app.setApplicationVersion(__version__); app.setQuitOnLastWindowClosed(False)
+    settings = QSettings("VoxTerrae", "VoxTerrae"); prefs = Prefs.load(settings)
+    if not settings.value("prefs/handle") and settings.value("handle"): prefs.handle = str(settings.value("handle"))   # 0.1.1 stored the handle at the top level
+    theme = a.theme or prefs.theme
+    guard = None
+    if not (a.demo or a.shot):
+        guard = plat.SingleInstance(on_raise=lambda: win._raise())
+        if not guard.is_primary: return 0   # the running VoxTerrae was asked to come to the front
     from voxterrae.app.main_window import MainWindow
     from voxterrae.app.bridge import Bridge
-    app = QApplication(sys.argv[:1]); app.setApplicationName("VoxTerrae"); app.setOrganizationName("VoxTerrae")
-    settings = QSettings("VoxTerrae", "VoxTerrae")
-    theme = a.theme or settings.value("theme", "darkops")
-    win = MainWindow(theme)
+    win = MainWindow(theme, prefs)
     loop = qasync.QEventLoop(app); asyncio.set_event_loop(loop)
     state = {"bridge": None}
 
     def start_live(handle: str):
-        handle = (handle or "").strip() or settings.value("handle", "") or _default_handle()
-        settings.setValue("handle", handle)
+        handle = (handle or "").strip() or prefs.handle or _default_handle()
+        prefs.handle = handle; prefs.save(settings); settings.setValue("handle", handle)
         state["bridge"] = Bridge(win, handle); state["bridge"].start()
         win.stack.setCurrentWidget(win.chat)
-        if not os.environ.get("VOXTERRAE_NO_UPDATE_CHECK"):
+        if not os.environ.get("VOXTERRAE_NO_UPDATE_CHECK") and prefs.update_check:
             from voxterrae.app.updates import check_async
             from voxterrae.app.updates import FEED_URL
             check_async(win.update_result.emit, url=os.environ.get("VOXTERRAE_UPDATE_FEED") or FEED_URL)
 
-    win.welcome.handle.setText(settings.value("handle", "")); win.welcome.handle.setPlaceholderText(f"handle (default: {_default_handle()})")
+    win.welcome.handle.setText(prefs.handle); win.welcome.handle.setPlaceholderText(f"handle (default: {_default_handle()})")
     win.welcome.enter.connect(start_live)
 
     async def shot_and_quit():
@@ -59,7 +71,8 @@ def main(argv=None):
         if not a.welcome: win.stack.setCurrentWidget(win.chat)
     elif a.live:
         loop.call_soon(start_live, a.live)   # sessions create asyncio tasks, so this must run inside the loop
-    win.show()
+    if prefs.start_minimized and win.tray and not a.shot and not a.demo: win.showMinimized(); win.hide()
+    else: win.show()
     with loop:
         if a.shot: loop.create_task(shot_and_quit())
         loop.run_forever()

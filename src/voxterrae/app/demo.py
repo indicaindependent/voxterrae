@@ -1,11 +1,11 @@
 """Demo population for render proofs (no network). Every string here is fictional sample copy."""
 from datetime import datetime, timedelta
-from .timeline import Item
+from .timeline import Item, presence_item
 def populate(win):
     win.set_groups([("HOME", "connected", ["home/*server*", "home/#warheatmap", "home/Axiom"]),
                     ("EFNET", "connected", ["efnet/*server*"])])
     win.rooms.bump("home/Axiom", 1); win.add("efnet/*server*", Item("system", text="nothing is joined for you here: type /join #channel to enter a room"))
-    win.meta.setText("· 214 online · topic: the live map, discussed"); win.me.setText("pete · online"); win.me.set_icon("dot", win.p.phosphor)
+    win.set_topic("home/#warheatmap", "the live map, discussed"); win.set_me("pete"); win.me.setText("pete · online"); win.me.set_icon("dot", win.p.phosphor)
     t0 = datetime(2026, 9, 20, 2, 1)
     A = lambda n, s, txt, **k: win.add("home/#warheatmap", Item("msg", nick=n, text=txt, ts=t0 + timedelta(seconds=s), msgid=f"m{s}", **k))
     A("Axiom", 0, "New WarDesk thread is live: Ukraine, 8 posts on a 7-minute drip. Event #48812 pinned for this room.", is_bot=True)
@@ -16,8 +16,9 @@ def populate(win):
     win.add("home/#warheatmap", Item("read"))
     A("jonas.dk", 420, "first time here. how do you tell a verified event from a rumour on the map?", highlight=True)
     A("Axiom", 440, "Two independent sources with timestamps before it goes red. Amber means one source. Type /ask for the long version.", is_bot=True, reply_to_nick="jonas.dk", reply_to_text="how do you tell a verified event from a rumour")
-    win.add("home/#warheatmap", Item("system", text="maya_k reacted 👍 to Axiom"))
+    win.add("home/#warheatmap", presence_item("kwame", True)); win.add("home/#warheatmap", presence_item("lior_", True)); win.add("home/#warheatmap", presence_item("anna_r", False))
+    win.add("home/#warheatmap", Item("msg", nick="kwame", text="* kwame waves from Accra, reading https://warheatmap.app/about first", ts=t0 + timedelta(seconds=470), msgid="m470"))
     win.typing.setText("maya_k is typing…")
     win.set_reply(win.models["home/#warheatmap"].items[-3]); win.composer.setText("the amber marker is the single-source state, red means two")
-    win.rail.set_events([("red", "Hormuz · tanker hit, 2 sources · 01:12"), ("blue", "Kharkiv · strike, verified · 01:40"), ("red", "Red Sea · UAV intercept · 00:58")])
-    win.rail.set_members(["~ Axiom", "@ desk_ops", "@ cartographer", "% maya_k", "+ jonas.dk", "  anna_r", "  kwame", "  lior_", "  +207 more"])
+    win.rail.set_card("Ukraine WarDesk · 8 posts · 7-min drip", "fired 02:04 ET · 5.40"); win.rail.set_events([("red", "Hormuz · tanker hit, 2 sources · 01:12"), ("blue", "Kharkiv · strike, verified · 01:40"), ("red", "Red Sea · UAV intercept · 00:58")])
+    win.rail.set_members(["~ Axiom", "@ desk_ops", "@ cartographer", "% maya_k", "+ jonas.dk", "  anna_r", "  kwame", "  lior_"])

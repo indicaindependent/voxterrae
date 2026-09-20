@@ -6,7 +6,7 @@ from typing import Dict, List
 from ..irc.networks import BUILTIN, Network
 from ..irc.session import NetworkSession
 from ..irc.message import Message
-from .timeline import Item, TimelineModel
+from .timeline import Item, TimelineModel, presence_item
 from ..store import Store, local_msgid
 
 def _profile_dir() -> str:
@@ -22,19 +22,51 @@ class Bridge:
         self.sessions: Dict[str, NetworkSession] = {}
         self.names: Dict[str, List[str]] = {}
         self.store = Store(os.path.join(_profile_dir(), "voxterrae.db"))
-        self._history_loaded: set = set()
+        self._history_loaded: set = set(); self._replaying = False; self._announced: Dict[str, str] = {}   # net.key -> server we last announced
         win.send_text.connect(self._on_send)
         win.send_reply.connect(lambda key, mid, text: self._on_send(key, f"/reply {mid} {text}"))
         win.send_react.connect(lambda key, mid, emoji: self._on_send(key, f"/react {mid} {emoji}"))
         win.typing_changed.connect(self._on_typing)
         win.room_changed.connect(self._on_room_changed)
+        if hasattr(win, "open_dm"): win.open_dm.connect(self.open_dm)
+        if hasattr(win, "whois"): win.whois.connect(lambda net, nick: self._on_send(f"{net}/{self.win.active.split('/', 1)[1]}" if self.win.active.startswith(net + "/") else f"{net}/*server*", f"/whois {nick}"))
+        if hasattr(win.rooms, "close_requested"): win.rooms.close_requested.connect(self._close_dm)
         self._members: Dict[str, List[str]] = {}
+        self.dms: Dict[str, List[str]] = {}         # net.key -> open private conversations (rail rows)
         self.joined: Dict[str, List[str]] = {}      # net.key -> rooms we are actually in (JOIN/PART/KICK), drives the rail
 
     def _rooms_for(self, net) -> List[str]:
         """Rail entries for a network: its buffer, the rooms it will auto-join, then everything we joined ourselves."""
         rooms = list(dict.fromkeys(list(net.autojoin) + self.joined.get(net.key, [])))
-        return [f"{net.key}/*server*"] + [f"{net.key}/{c}" for c in rooms if c != "*server*"]
+        return [f"{net.key}/*server*"] + [f"{net.key}/{c}" for c in rooms if c != "*server*"] + [f"{net.key}/{n}" for n in self.dms.get(net.key, [])]
+
+    def open_dm(self, net: str, nick: str):
+        if not nick or nick.startswith(("#", "&")) or nick == "*server*": return
+        if nick not in self.dms.setdefault(net, []): self.dms[net].append(nick)
+        label = next((n.name.split(" ")[0].upper() for n in self.networks if n.key == net), net.upper())
+        self.win.open_room(f"{net}/{nick}", label)
+
+    def _close_dm(self, key: str):
+        net, _, nick = key.partition("/")
+        if nick in self.dms.get(net, []): self.dms[net].remove(nick)
+
+    def _label(self, net) -> str: return net.name.split(" ")[0].upper()
+
+    def _rename_member(self, k: str, old: str, new: str):
+        for key, names in self._members.items():
+            if not key.startswith(k + "/"): continue
+            for i, n in enumerate(names):
+                pre, nick = (n[0], n[1:].strip()) if n and n[0] in "~&@%+" else ("", n.strip())
+                if nick == old: names[i] = pre + new
+            if key == self.win.active: self.win.rail.set_members(names)
+
+    def _member_event(self, k: str, room: str, nick: str, joined: bool):
+        key = f"{k}/{room}"; names = self._members.setdefault(key, [])
+        bare = [(n[1:].strip() if n and n[0] in "~&@%+" else n.strip()) for n in names]
+        if joined and nick not in bare: names.append(nick)
+        if not joined and nick in bare: names.pop(bare.index(nick))
+        if key == self.win.active: self.win.rail.set_members(names); self.win._refresh_meta()
+        self.win.add(key, presence_item(nick, joined))
 
     def start(self):
         groups = []
@@ -54,7 +86,17 @@ class Bridge:
             groups = []
             for net in self.networks:
                 s = self.sessions[net.key]
-                groups.append((net.name.split(" ")[0].upper(), s.state, self._rooms_for(net)))
+                groups.append((self._label(net), s.state, self._rooms_for(net)))
+                if s.state == "connected" and s.client and self._announced.get(net.key) != s.server_used:
+                    # 001 is consumed inside connect() before the session attaches our handler, so announce from here
+                    self._announced[net.key] = s.server_used
+                    if net.key == "home": self.win.set_me(s.client.nick)
+                    self.win.add(f"{net.key}/*server*", Item("system", text=f"connected to {net.name} ({s.server_used}) as {s.client.nick} · caps: {', '.join(sorted(s.client.caps_enabled)) or 'none'}"))
+                    if not net.autojoin: self.win.add(f"{net.key}/*server*", Item("system", text="nothing is joined for you here: type /join #channel to enter a room"))
+                if hasattr(self.win, "set_net_state"):
+                    self.win.set_net_state(net.key, s.state, self._label(net))
+                    lag = getattr(s.client, "lag_ms", None) if s.client else None
+                    if lag is not None and s.state == "connected": self.win.set_lag(net.key, lag)
             self.win.rooms.set_groups(groups, self.win.active)
             hs = self.sessions.get("home"); st = hs.state if hs else "?"
             self.win.me.setText(f"{self.handle} · {st}"); self.win.me.set_icon("dot" if st == "connected" else "ring", self.win.p.phosphor if st == "connected" else self.win.p.muted)
@@ -75,6 +117,7 @@ class Bridge:
             elif m.command == "NOTICE" or not m.nick or "!" not in (m.source or ""): room = "*server*"   # server/pseudo-user notices (e.g. EFnet drone scanners) go to the network buffer, not a DM
             else: room = m.nick
             key = f"{k}/{room}"; text = m.params[-1]
+            if room != "*server*" and not room.startswith(("#", "&")) and room not in self.dms.setdefault(k, []): self.dms[k].append(room)
             if text.startswith("\x01ACTION ") and text.endswith("\x01"): text = f"* {m.nick} {text[8:-1]}"
             nick = m.nick or sess.server_used or "server"; ts = self._ts(m)
             mid = m.msgid or local_msgid(k, room, nick, ts.astimezone(timezone.utc).isoformat(), text)
@@ -101,20 +144,50 @@ class Bridge:
             if f"{k}/{m.params[0]}" == self.win.active and m.nick != me:
                 self.win.typing.setText(f"{m.nick} is typing…" if m.tags["+typing"] == "active" else "")
         elif m.command == "353":
-            key = f"{k}/{m.params[-2]}"; self.names.setdefault(key, []).extend(m.params[-1].split())
+            key = f"{k}/{m.params[-2]}"   # userhost-in-names gives "@nick!user@host": keep the prefix, drop the hostmask
+            self.names.setdefault(key, []).extend(n.split("!", 1)[0] for n in m.params[-1].split() if n)
         elif m.command == "366":
             key = f"{k}/{m.params[1]}"; names = self.names.pop(key, [])
-            self._members[key] = sorted(names, key=lambda n: ("~&@%+".find(n[0]) if n[0] in "~&@%+" else 9, n.lower()))
-            if key == self.win.active: self.win.rail.set_members(self._members[key])
+            self._members[key] = sorted(dict.fromkeys(names), key=lambda n: ("~&@%+".find(n[0]) if n[0] in "~&@%+" else 9, n.lower()))
+            if key == self.win.active: self.win.rail.set_members(self._members[key]); self.win._refresh_meta()
             self.win.add(key, Item("system", text=f"{len(names)} here on {sess.net.name}"))
         elif m.command == "332":
-            self.win.add(f"{k}/{m.params[1]}", Item("system", text=f"topic: {m.params[-1]}"))
+            self.win.set_topic(f"{k}/{m.params[1]}", m.params[-1]); self.win.add(f"{k}/{m.params[1]}", Item("system", sub="topic", text=f"topic: {m.params[-1]}"))
+        elif m.command in ("JOIN", "PART", "KICK", "QUIT") and self._replaying:
+            pass   # history playback: presence changes from the past would corrupt the live member list and the fold
+        elif m.command == "JOIN" and m.nick and m.nick != me:
+            self._member_event(k, m.params[0], m.nick, True)
+        elif m.command in ("PART", "KICK") and m.nick and (m.params[1] if m.command == "KICK" and len(m.params) > 1 else m.nick) != me:
+            who = m.params[1] if m.command == "KICK" and len(m.params) > 1 else m.nick
+            self._member_event(k, m.params[0], who, False)
+        elif m.command == "QUIT" and m.nick and m.nick != me:
+            for key in [key for key in list(self._members) if key.startswith(k + "/")]:
+                names = self._members[key]; bare = [(n[1:].strip() if n and n[0] in "~&@%+" else n.strip()) for n in names]
+                if m.nick in bare: self._member_event(k, key.split("/", 1)[1], m.nick, False)
+        elif m.command == "NICK" and m.nick and m.params:
+            new = m.params[0]
+            if m.nick == me: self.win.set_me(new); self.win.add(f"{k}/*server*", Item("system", text=f"you are now known as {new}"))
+            self._rename_member(k, m.nick, new)
+            for key in [key for key in self._members if key.startswith(k + "/")]:
+                if any((n[1:].strip() if n and n[0] in "~&@%+" else n.strip()) == new for n in self._members[key]): self.win.add(key, Item("system", sub="presence", text=f"{m.nick} is now {new}", meta={"renamed": [f"{m.nick} is now {new}"]}))
+        elif m.command == "TOPIC" and m.params:
+            self.win.set_topic(f"{k}/{m.params[0]}", m.params[-1]); self.win.add(f"{k}/{m.params[0]}", Item("system", sub="topic", text=f"{m.nick or 'server'} set the topic: {m.params[-1]}"))
+        elif m.command in ("311", "312", "313", "317", "318", "319", "330", "338", "378", "379", "671"):
+            txt = {"311": "{1} is {2}@{3} ({5})", "312": "{1} is on {2} ({3})", "313": "{1} is an operator", "317": "{1} idle {2}s", "318": "end of whois for {1}", "319": "{1} is in {2}", "330": "{1} is logged in as {2}", "338": "{1} actually {2}", "378": "{1} connecting from {2}", "379": "{1} modes {2}", "671": "{1} is using a secure connection"}.get(m.command, "{1} {2}")
+            try: line = txt.format(*m.params)
+            except Exception: line = " ".join(m.params[1:])
+            self.win.add(self.win.active if self.win.active.startswith(k + "/") else f"{k}/*server*", Item("system", text=line))
+        elif m.command == "433":
+            self.win.add(f"{k}/*server*", Item("system", sub="error", text=f"nick {m.params[1] if len(m.params) > 1 else ''} is already in use; use /nick to pick another"))
+        elif m.command in ("401", "402", "403", "404", "405", "421", "442", "471", "473", "474", "475", "477", "482"):
+            self.win.add(self.win.active if self.win.active.startswith(k + "/") else f"{k}/*server*", Item("system", sub="error", text=" ".join(m.params[1:])))
         elif m.command in ("PART", "KICK") and (m.params[1] if m.command == "KICK" and len(m.params) > 1 else m.nick) == me:
             room = m.params[0]
             if room in self.joined.get(k, []): self.joined[k].remove(room)
             self.win.add(f"{k}/{room}", Item("system", text=("kicked from " if m.command == "KICK" else "left ") + room))
         elif m.command == "JOIN" and m.nick == me:
             room = m.params[0]; key = f"{k}/{room}"
+            if self._replaying: return
             if room not in self.joined.setdefault(k, []): self.joined[k].append(room)
             if key not in self._history_loaded:
                 self._history_loaded.add(key); self._replay_store(k, room, key)
@@ -124,8 +197,7 @@ class Bridge:
         elif m.command == "VT_CTCP":
             self.win.add(f"{k}/*server*", Item("system", text=f"CTCP {m.params[1]} from {m.params[0]} (answered)"))
         elif m.command == "001":
-            self.win.add(f"{k}/{sess.net.home_channel}", Item("system", text=f"connected to {sess.net.name} ({sess.server_used}) · caps: {', '.join(sorted(sess.client.caps_enabled)) or 'none'}"))
-            if not sess.net.autojoin: self.win.add(f"{k}/*server*", Item("system", text="nothing is joined for you here: type /join #channel to enter a room"))
+            pass   # registration completes inside connect(); the status loop announces the connection (see _status_loop)
 
     def _replay_store(self, k: str, room: str, key: str):
         rows = self.store.recent(k, room, 200); marker = self.store.read_marker(k, room); placed_marker = False
@@ -150,9 +222,13 @@ class Bridge:
             else: rows = await c.chathistory("LATEST", room, "*", limit=100)
         except Exception as e:
             self.win.add(key, Item("system", text=f"history fetch failed: {e}")); return
-        for m in rows:  # same path as live lines: the store's INSERT OR IGNORE is the one dedupe point
-            self._on_event(sess, m)
-        if rows: self.win.add(key, Item("system", text=f"{len(rows)} lines from server history" + (" since your last visit" if newest else "")))
+        self._replaying = True
+        try:
+            for m in rows:  # same path as live lines: the store's INSERT OR IGNORE is the one dedupe point
+                self._on_event(sess, m)
+        finally: self._replaying = False
+        n_msgs = sum(1 for m in rows if m.command in ("PRIVMSG", "NOTICE"))
+        if n_msgs: self.win.add(key, Item("system", text=f"{n_msgs} messages from server history" + (" since your last visit" if newest else "")))
 
     def _on_typing(self, key: str, active: bool):
         net, _, room = key.partition("/"); s = self.sessions.get(net)
@@ -170,12 +246,31 @@ class Bridge:
 
     def _on_send(self, key: str, text: str):
         net, _, room = key.partition("/"); s = self.sessions.get(net)
-        if not s or not s.client or s.state != "connected": self.win.add(key, Item("system", text="not connected")); return
+        if not s or not s.client or s.state != "connected": self.win.add(key, Item("system", sub="error", text="not connected: this line was not sent")); return
         async def go():
             if text.startswith("/"):
                 cmd, _, rest = text[1:].partition(" ")
                 if cmd in ("join", "j"): await s.client.join(rest.strip()); return
-                if cmd in ("part", "leave"): await s.client.send_raw(f"PART {rest.strip() or room}"); return
+                if cmd in ("part", "leave"):
+                    target = rest.strip() or room
+                    if not target.startswith(("#", "&")): self._close_dm(key); self.win.close_room(key); return
+                    await s.client.send_raw(f"PART {target}"); return
+                if cmd in ("msg", "query", "q"):
+                    to, _, body = rest.strip().partition(" ")
+                    if not to: self.win.add(key, Item("system", sub="error", text="usage: /msg nick text")); return
+                    self.open_dm(net, to)
+                    if body:
+                        mid = await s.client.privmsg(to, body)
+                        if not s.client.has("echo-message"):
+                            now = datetime.now().astimezone(); lid = local_msgid(net, to, s.client.nick, now.astimezone(timezone.utc).isoformat(), body)
+                            self.store.add(net, to, lid, now, s.client.nick, body); self.win.add(f"{net}/{to}", Item("msg", nick=s.client.nick, text=body, ts=now, msgid=lid, is_me=True))
+                    return
+                if cmd == "whois": await s.client.send_raw(f"WHOIS {rest.strip()}"); return
+                if cmd == "nick": await s.client.send_raw(f"NICK {rest.strip()}"); return
+                if cmd == "topic":
+                    if rest.strip(): await s.client.send_raw(f"TOPIC {room} :{rest.strip()}")
+                    else: await s.client.send_raw(f"TOPIC {room}")
+                    return
                 if cmd == "me": await s.client.privmsg(room, f"\x01ACTION {rest}\x01"); return
                 if cmd == "raw": await s.client.send_raw(rest); return
                 if cmd in ("search", "s"):
@@ -194,7 +289,7 @@ class Bridge:
                 if cmd == "reply":  # /reply <msgid> text
                     mid, _, body = rest.strip().partition(" ")
                     await s.client.privmsg(room, body, reply_to=mid); return
-                self.win.add(key, Item("system", text=f"unknown command /{cmd} (try /search /ask /react /reply /join /me)")); return
+                self.win.add(key, Item("system", sub="error", text=f"unknown command /{cmd} (try /help)")); return
             mid = await s.client.privmsg(room, text)
             if not s.client.has("echo-message"):  # classic network: show + store our own line locally
                 now = datetime.now().astimezone(); lid = local_msgid(net, room, s.client.nick, now.astimezone(timezone.utc).isoformat(), text)

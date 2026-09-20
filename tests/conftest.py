@@ -8,3 +8,13 @@ def pytest_collection_modifyitems(config, items):
     skip = pytest.mark.skip(reason="live network test; set VOXTERRAE_LIVE_TESTS=1 to run")
     for it in items:
         if "live" in it.keywords: it.add_marker(skip)
+
+@pytest.fixture(autouse=True, scope="session")
+def _isolated_qsettings(tmp_path_factory):
+    """Tests must never write the developer's real VoxTerrae settings (the window saves prefs on construction)."""
+    from PySide6.QtCore import QSettings
+    d = str(tmp_path_factory.mktemp("qsettings"))
+    QSettings.setDefaultFormat(QSettings.IniFormat)
+    for fmt in (QSettings.IniFormat, QSettings.NativeFormat): QSettings.setPath(fmt, QSettings.UserScope, d)
+    os.environ["LOCALAPPDATA"] = d   # profile dir (db, logs) too
+    yield

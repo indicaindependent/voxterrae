@@ -25,8 +25,12 @@ Runs the unit tests, builds `dist\VoxTerrae.exe` (one file, no installer), print
 ## Tests
 `pytest tests/test_message.py tests/test_store.py` are offline. `tests/test_live_*.py` talk to the live networks (probe nick `vt-*`, a fresh throwaway room `#vt-<hex>` per run).
 
-## Commands
-`/search words` (local full-text, per network) · `/ask question` (Axiom, HOME rooms) · `/reply <msgid> text` · `/react <msgid> 🔥` · `/join #room` · `/me action` · right-click a message for Reply / React / Copy · Ctrl+click = 👍
+## Commands and keys
+`/join` `/part` `/msg` `/me` `/search` (local full-text, per network) `/ask` (Axiom, HOME) `/reply` `/react` (HOME) `/topic` `/whois` `/nick` `/clear` `/help` `/raw`. Type `/` for the popup.
+Ctrl+K quick switcher · Alt+Up/Down rooms · Alt+A next unread · Ctrl+1..9 jump · Ctrl+, settings · Ctrl+. rail · Ctrl+= / Ctrl+- text size · Tab completes nicks · Shift+Enter new line · hover or right-click a message for Reply / React / Copy · Ctrl+click = 👍. Full list: `docs/commands.md` on the hub.
+
+## What 0.1.2 adds
+Windows 11 polish and hardening: dark title bar matched to the theme, taskbar identity, single-instance guard, close-to-tray with a quit in the tray menu, crash dialog + rotating log in `%LOCALAPPDATA%\VoxTerrae\logs`, persisted splitter layout. Timeline: per-nick colours, clickable links, `/me` actions, folded join/leave lines, hover actions, unread separator, jump-to-latest, empty states, compact single-line mode. Composer: multi-line, history, Tab completion, command popup, byte counter. Rooms: collapsible networks, unread + mention pills, right-click menu. Members: rank badges, filter, live updates on join/part/quit/nick. Settings dialog (Ctrl+,), About, quick switcher (Ctrl+K), status bar with per-network lag, reconnect banner, private conversations from the members panel.
 
 Data lives in `%LOCALAPPDATA%\VoxTerrae\` (`voxterrae.db`, `tls_pins.json`). MIT licence; Qt under LGPLv3.
 

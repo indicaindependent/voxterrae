@@ -8,7 +8,7 @@ a = Analysis(
     pathex=[os.path.join(ROOT, "src")],
     binaries=[],
     datas=[],
-    hiddenimports=["qasync", "voxterrae", "voxterrae.app", "voxterrae.app.__main__", "voxterrae.app.main_window", "voxterrae.app.bridge", "voxterrae.app.demo", "voxterrae.app.updates", "voxterrae.irc.session", "voxterrae.irc.networks", "voxterrae.store"],
+    hiddenimports=["qasync", "voxterrae", "voxterrae.app", "voxterrae.app.__main__", "voxterrae.app.main_window", "voxterrae.app.bridge", "voxterrae.app.demo", "voxterrae.app.updates", "voxterrae.app.platform", "voxterrae.app.prefs", "voxterrae.app.composer", "voxterrae.app.roomlist", "voxterrae.app.members", "PySide6.QtNetwork", "voxterrae.irc.session", "voxterrae.irc.networks", "voxterrae.store"],
     hookspath=[], runtime_hooks=[],
     excludes=["PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets", "PySide6.Qt3DCore", "PySide6.QtMultimedia", "PySide6.QtQuick", "PySide6.QtQml", "PySide6.QtCharts", "PySide6.QtPdf", "tkinter"],
     cipher=block_cipher, noarchive=False,

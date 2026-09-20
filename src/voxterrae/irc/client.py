@@ -72,6 +72,7 @@ class IrcClient:
         self.caps_enabled: Set[str] = set()
         self.isupport: Dict[str, str] = {}
         self.nick = cfg.nick
+        self.lag_ms: Optional[int] = None   # round trip of our own PING, set on PONG
         self.registered = asyncio.Event()
         self.closed = asyncio.Event()
         self.seen_msgids: Set[str] = set()
@@ -240,7 +241,7 @@ class IrcClient:
                     log.warning("server silent %.0fs, closing", time.monotonic() - self._last_rx)
                     await self.close(); return
                 if self.registered.is_set():
-                    await self.send_raw(f"PING :vt{int(time.time())}")
+                    await self.send_raw(f"PING :vt{int(time.monotonic() * 1000)}")   # PONG echoes it back -> lag_ms
         except asyncio.CancelledError:
             raise
 
@@ -249,6 +250,8 @@ class IrcClient:
         c = msg.command
         if c == "PING":
             await self.send_raw("PONG :" + (msg.params[-1] if msg.params else "")); return
+        if c == "PONG" and msg.params and msg.params[-1].startswith("vt") and msg.params[-1][2:].isdigit():
+            self.lag_ms = max(0, int(time.monotonic() * 1000) - int(msg.params[-1][2:]))
         if c == "CAP":
             await self._on_cap(msg); return
         if c == "AUTHENTICATE":
