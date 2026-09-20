@@ -10,8 +10,14 @@ import asyncio, os, secrets, time
 import pytest
 from voxterrae.irc import IrcClient, ClientConfig
 
+# Pete 2026-09-20: no channel name is hardcoded in this repo. The room is taken from
+# VT_TEST_CHAN, or generated per run, so the only channel this project ever names is
+# #warheatmap. Set VT_TEST_CHAN to reuse a room across runs.
+CHAN = os.environ.get("VT_TEST_CHAN") or ("#vt-" + secrets.token_hex(3))
+ROOM = "home/" + CHAN
+
 HOST = os.environ.get("VT_TEST_HOST", "irc.warheatmap.app")
-CHAN = os.environ.get("VT_TEST_CHAN", "#vt-m0-test")
+
 pytestmark = pytest.mark.live
 
 

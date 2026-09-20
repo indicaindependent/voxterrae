@@ -8,6 +8,12 @@ from dataclasses import replace
 import pytest
 from voxterrae.irc.networks import HOME, EFNET
 from voxterrae.irc.session import NetworkSession
+
+# Pete 2026-09-20: no channel name is hardcoded in this repo. The room is taken from
+# VT_TEST_CHAN, or generated per run, so the only channel this project ever names is
+# #warheatmap. Set VT_TEST_CHAN to reuse a room across runs.
+CHAN = os.environ.get("VT_TEST_CHAN") or ("#vt-" + secrets.token_hex(3))
+ROOM = "home/" + CHAN
 pytestmark = pytest.mark.live
 
 def test_dual_network():
@@ -43,8 +49,8 @@ def test_dual_network():
             # client tags must be a no-op on EFnet (sent into our own room only)
             await ec.react(room, "nonexistent", "🔥"); await ec.typing(room)
             # HOME echo in the test room
-            await hc.join("#vt-m0-test"); await asyncio.sleep(1.0)
-            mid = await hc.privmsg("#vt-m0-test", f"dual-network probe {handle}")
+            await hc.join(CHAN); await asyncio.sleep(1.0)
+            mid = await hc.privmsg(CHAN, f"dual-network probe {handle}")
             assert mid
             return {"home_server": home.server_used, "efnet_server": ef.server_used, "efnet_caps": sorted(ec.caps_enabled),
                     "efnet_pins": pins, "efnet_room": room, "efnet_names": names, "home_msgid": mid, "efnet_events": len(seen["efnet"]), "home_events": len(seen["home"])}

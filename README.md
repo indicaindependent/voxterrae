@@ -23,7 +23,7 @@ powershell -ExecutionPolicy Bypass -File build\build_win.ps1
 Runs the unit tests, builds `dist\VoxTerrae.exe` (one file, no installer), prints its SHA-256, and writes a smoke render.
 
 ## Tests
-`pytest tests/test_message.py tests/test_store.py` are offline. `tests/test_live_*.py` talk to the live networks (probe nick `vt-*`, room `#vt-m0-test`).
+`pytest tests/test_message.py tests/test_store.py` are offline. `tests/test_live_*.py` talk to the live networks (probe nick `vt-*`, room taken from `VT_TEST_CHAN` or generated per run).
 
 ## Commands
 `/search words` (local full-text, per network) · `/ask question` (Axiom, HOME rooms) · `/reply <msgid> text` · `/react <msgid> 🔥` · `/join #room` · `/me action` · right-click a message for Reply / React / Copy · Ctrl+click = 👍

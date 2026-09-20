@@ -7,6 +7,12 @@ from PySide6.QtWidgets import QApplication
 import qasync
 from voxterrae.app.main_window import MainWindow
 from voxterrae.app.bridge import Bridge
+
+# Pete 2026-09-20: no channel name is hardcoded in this repo. The room is taken from
+# VT_TEST_CHAN, or generated per run, so the only channel this project ever names is
+# #warheatmap. Set VT_TEST_CHAN to reuse a room across runs.
+CHAN = os.environ.get("VT_TEST_CHAN") or ("#vt-" + secrets.token_hex(3))
+ROOM = "home/" + CHAN
 handle = sys.argv[1]; token = sys.argv[2]; phase = sys.argv[3]
 app = QApplication([]); loop = qasync.QEventLoop(app); asyncio.set_event_loop(loop)
 win = MainWindow(); win.stack.setCurrentWidget(win.chat); win.show(); br = Bridge(win, handle)
@@ -17,14 +23,14 @@ async def run():
         if all(s.state == "connected" for s in br.sessions.values()): break
     await asyncio.sleep(4)  # joins + history
     if phase == "A":
-        win.show_room("home/#vt-m0-test"); await br.sessions["home"].client.join("#vt-m0-test"); await asyncio.sleep(2)
-        win.send_text.emit("home/#vt-m0-test", f"M2 store probe {token}"); await asyncio.sleep(2)
-        win.send_text.emit("home/#vt-m0-test", f"/search {token}"); await asyncio.sleep(1)
+        win.show_room(ROOM); await br.sessions["home"].client.join(CHAN); await asyncio.sleep(2)
+        win.send_text.emit(ROOM, f"M2 store probe {token}"); await asyncio.sleep(2)
+        win.send_text.emit(ROOM, f"/search {token}"); await asyncio.sleep(1)
     else:
-        await br.sessions["home"].client.join("#vt-m0-test"); await asyncio.sleep(4)
+        await br.sessions["home"].client.join(CHAN); await asyncio.sleep(4)
     items = {k: [i for i in m.items if i.kind == "msg"] for k, m in win.models.items()}
-    probe = [i for i in items.get("home/#vt-m0-test", []) if token in i.text]
-    sysl = [i.text for i in win.models["home/#vt-m0-test"].items if i.kind == "system"] if "home/#vt-m0-test" in win.models else []
+    probe = [i for i in items.get(ROOM, []) if token in i.text]
+    sysl = [i.text for i in win.models[ROOM].items if i.kind == "system"] if ROOM in win.models else []
     print(f"PHASE {phase}: sessions={ {k: s.state for k, s in br.sessions.items()} } probe_in_view={len(probe)} rooms_with_msgs={ {k: len(v) for k, v in items.items() if v} }")
     print("  system lines:", [x[:90] for x in sysl][:8])
     await br.stop(); app.quit()
