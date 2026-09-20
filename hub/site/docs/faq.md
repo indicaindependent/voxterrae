@@ -9,7 +9,7 @@ order: 8
 
 **Can I use another IRC client on HOME?** Yes: `irc.warheatmap.app`, port 6697, TLS. Anything that speaks IRCv3 gets history and reactions; anything older still works.
 
-**Where is the source?** Linked from [download](/download). GitHub publishing is in progress.
+**Where is the source?** [github.com/indicaindependent/voxterrae](https://github.com/indicaindependent/voxterrae) (MIT). The source bundle and the exe are also on the [download](/download) page with published SHA-256s.
 
 **Who is Axiom?** The room assistant on HOME. `/ask` sends it a question in the current room.
 

@@ -1,11 +1,42 @@
 {
  "product": "VoxTerrae",
- "latest": "0.1.0",
+ "latest": "0.1.1",
  "releases": [
+  {
+   "version": "0.1.1",
+   "date": "2026-09-20",
+   "title": "The exe starts",
+   "notes": [
+    "Fixes the 0.1.0 Windows exe, which crashed at launch with ImportError: attempted relative import with no known parent package. The frozen entry point was the package's own __main__.py; PyInstaller runs the entry file as a plain script, so its relative imports had no parent package. The exe now starts from a dedicated launcher and the module uses absolute imports.",
+    "The release workflow now runs the whole offline test suite and then starts the built exe itself (demo render, headless) and fails the release if it does not exit cleanly and write a picture. That is the check whose absence shipped 0.1.0.",
+    "No client behaviour changed. Autojoin is still #warheatmap on HOME only; EFnet joins nothing.",
+    "This build carries NO provenance attestation: v0.1.1 was tagged while the repository was briefly private, and attestations are only issued at build time for public repositories. Verify it by SHA-256 (below). The next tag will attest again. As before, the exe is not code-signed, so SmartScreen will show its notice."
+   ],
+   "assets": [
+    {
+     "file": "VoxTerrae.exe",
+     "kind": "portable",
+     "platform": "windows-x64",
+     "size": 42405300,
+     "sha256": "be8ea50d55de58f97486731cd364872ace135dac6f1b434ff0037fa1061cb56e",
+     "attested": false,
+     "note": "Windows 10/11 x64 portable. Not code-signed (SmartScreen notice). Built by the public GitHub Actions release workflow, run 35535526091; no provenance attestation for this build."
+    },
+    {
+     "file": "voxterrae-src-0.1.1.zip",
+     "kind": "source",
+     "platform": "any",
+     "size": 55018,
+     "sha256": "fcc4896ed303fa15eee5571c793b9945fa9ce455ee18fe594ab4ad2032df0110",
+     "attested": false,
+     "note": "Source bundle. Build the Windows portable exe with build\\build_win.ps1 (needs Python 3.11+)."
+    }
+   ]
+  },
   {
    "version": "0.1.0",
    "date": "2026-09-20",
-   "title": "First public release: Windows portable exe + source",
+   "title": "First public source release",
    "notes": [
     "Connects to HOME (irc.warheatmap.app, IRCv3) and EFnet (server pool with first-use certificate pinning) at the same time",
     "Auto-joins exactly one room, #warheatmap on HOME; EFnet is connected and a /join away",
@@ -19,20 +50,24 @@
    ],
    "assets": [
     {
-     "file": "VoxTerrae.exe",
-     "kind": "portable",
-     "platform": "windows-x64",
-     "size": 42382385,
-     "sha256": "f8455f385120d0d0a66d157faf99fd1277bc8ff72f68da17d195f04e0f46d966",
-     "note": "Portable single-file exe, built by the public GitHub Actions release workflow from tag v0.1.0 (commit df34f1df). Same bytes as the GitHub release asset; a build provenance attestation is published on GitHub (gh attestation verify VoxTerrae.exe --repo indicaindependent/voxterrae). Unsigned until the signing step in the roadmap lands; see the SmartScreen note."
-    },
-    {
      "file": "voxterrae-src-0.1.0.zip",
      "kind": "source",
      "platform": "any",
      "size": 52350,
      "sha256": "ae77fcb8d83ebf605edb49ad2720fd8503ab55cff0a49138a6ee82c2c0d1b567",
-     "note": "Source bundle. Build the Windows portable exe with build\\build_win.ps1 (needs Python 3.11+)."
+     "note": "Source bundle. Build the Windows portable exe with build\\build_win.ps1 (needs Python 3.11+).",
+     "attested": false
+    }
+   ],
+   "withdrawn": [
+    {
+     "file": "VoxTerrae.exe",
+     "kind": "portable",
+     "platform": "windows-x64",
+     "size": 42382385,
+     "sha256": "f8455f385120d0d0a66d157faf99fd1277bc8ff72f68da17d195f04e0f46d966",
+     "reason": "Withdrawn 2026-09-20: the 0.1.0 exe crashes at launch (ImportError: attempted relative import with no known parent package; the frozen entry point was the package __main__.py). The bytes on GitHub are unchanged and still match their attestation; they just do not run. Fixed in 0.1.1.",
+     "attested": true
     }
    ]
   }
