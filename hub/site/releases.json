@@ -5,7 +5,7 @@
   {
    "version": "0.1.0",
    "date": "2026-09-20",
-   "title": "First public source release",
+   "title": "First public release: Windows portable exe + source",
    "notes": [
     "Connects to HOME (irc.warheatmap.app, IRCv3) and EFnet (server pool with first-use certificate pinning) at the same time",
     "Auto-joins exactly one room, #warheatmap on HOME; EFnet is connected and a /join away",
@@ -19,21 +19,20 @@
    ],
    "assets": [
     {
-     "file": "voxterrae-src-0.1.0.zip",
-     "kind": "source",
-     "platform": "any",
-     "size": 52339,
-     "sha256": "92bb8c202328c4848683b399f911bf805be39d0e28bbc3f2153782ef7b0fc1ab",
-     "note": "Source bundle. Build the Windows portable exe with build\\build_win.ps1 (needs Python 3.11+)."
-    }
-   ],
-   "planned": [
-    {
      "file": "VoxTerrae.exe",
      "kind": "portable",
      "platform": "windows-x64",
-     "status": "planned",
-     "note": "Portable single-file exe, built from this source on Windows 11. Unsigned until the signing step in the roadmap lands; see the SmartScreen note."
+     "size": 42382385,
+     "sha256": "f8455f385120d0d0a66d157faf99fd1277bc8ff72f68da17d195f04e0f46d966",
+     "note": "Portable single-file exe, built by the public GitHub Actions release workflow from tag v0.1.0 (commit df34f1df). Same bytes as the GitHub release asset; a build provenance attestation is published on GitHub (gh attestation verify VoxTerrae.exe --repo indicaindependent/voxterrae). Unsigned until the signing step in the roadmap lands; see the SmartScreen note."
+    },
+    {
+     "file": "voxterrae-src-0.1.0.zip",
+     "kind": "source",
+     "platform": "any",
+     "size": 52350,
+     "sha256": "ae77fcb8d83ebf605edb49ad2720fd8503ab55cff0a49138a6ee82c2c0d1b567",
+     "note": "Source bundle. Build the Windows portable exe with build\\build_win.ps1 (needs Python 3.11+)."
     }
    ]
   }
