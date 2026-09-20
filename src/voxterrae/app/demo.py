@@ -3,8 +3,8 @@ from datetime import datetime, timedelta
 from .timeline import Item
 def populate(win):
     win.set_groups([("HOME", "● connected", ["home/#warheatmap", "home/#ukraine", "home/#hormuz", "home/#osint", "home/#help", "home/Axiom"]),
-                    ("EFNET", "● connected", ["efnet/#phpnuke", "efnet/#wk", "efnet/#OGhomecoming", "efnet/#ComebacktoIRC", "efnet/#VetsHateDiscord"])])
-    win.rooms.bump("home/#ukraine", 3); win.rooms.bump("home/#hormuz", 12); win.rooms.bump("home/Axiom", 1); win.rooms.bump("efnet/#phpnuke", 2)
+                    ("EFNET", "● connected", ["efnet/#room-a", "efnet/#room-b", "efnet/#room-c"])])
+    win.rooms.bump("home/#ukraine", 3); win.rooms.bump("home/#hormuz", 12); win.rooms.bump("home/Axiom", 1); win.rooms.bump("efnet/#room-a", 2)
     win.meta.setText("· 214 online · topic: the live map, discussed"); win.me.setText("● pete · online")
     t0 = datetime(2026, 9, 20, 2, 1)
     A = lambda n, s, txt, **k: win.add("home/#warheatmap", Item("msg", nick=n, text=txt, ts=t0 + timedelta(seconds=s), msgid=f"m{s}", **k))
