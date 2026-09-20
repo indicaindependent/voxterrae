@@ -1,7 +1,40 @@
 {
  "product": "VoxTerrae",
- "latest": "0.1.1",
+ "latest": "0.1.2",
  "releases": [
+  {
+   "version": "0.1.2",
+   "date": "2026-09-20",
+   "title": "Windows 11 polish and hardening",
+   "notes": [
+    "Windows 11 shell: dark title bar matched to the theme, taskbar identity, single-instance (a second launch raises the running window), close-to-tray with Quit in the tray menu, a crash dialog that points at the log in %LOCALAPPDATA%\\VoxTerrae\\logs, HiDPI rounding, remembered splitter layout.",
+    "Timeline: stable per-nick colours, clickable links, /me action lines, folded join/leave lines, hover Reply / React / Copy, a NEW MESSAGES separator, jump-to-latest, an optional compact one-line layout, text size 14 to 22 px.",
+    "Composer: multi-line (Shift+Enter), sent-message history, Tab completion for nicks and commands, a command popup when you type /, a byte counter. Rooms: collapsible networks, unread and mention counts. Members: rank badges, filter, live join/part/quit/nick updates. Settings (Ctrl+,), About, quick switcher (Ctrl+K), status bar with measured lag, reconnect banner, private conversations, and /msg /whois /topic /nick /clear /help.",
+    "Fixes: the connection line and your own-nick highlight never reached the window in 0.1.1; the member list could show a person twice; history replay invented join and leave lines. The sample WarDesk card is gone until it carries real data.",
+    "A plain pytest now asserts the autojoin rule itself: #warheatmap on HOME is the only room any network auto-joins. Behaviour is unchanged; the rule simply has a test on it now.",
+    "This build carries a provenance attestation again (the repository was public when v0.1.2 was tagged). Verify with gh attestation verify. The exe is still not code-signed, so SmartScreen will show its notice once."
+   ],
+   "assets": [
+    {
+     "file": "VoxTerrae.exe",
+     "kind": "portable",
+     "platform": "windows-x64",
+     "size": 42600910,
+     "sha256": "9f68e1ce3f6d7e2e0d9b856630fdc8ccf983e48c97592a0fc96557216c9dfa83",
+     "attested": true,
+     "note": "Windows 10/11 x64 portable. Not code-signed (SmartScreen notice). Built and provenance-attested by the public GitHub Actions release workflow, run 35542411696, from tag v0.1.2 at commit c06b63bf."
+    },
+    {
+     "file": "voxterrae-src-0.1.2.zip",
+     "kind": "source",
+     "platform": "any",
+     "size": 89962,
+     "sha256": "bdc5495f9b3667388abc76de1e05bc4e1cee77575e804e61e49b696f6a393f9c",
+     "attested": false,
+     "note": "Source bundle. Build the Windows portable exe with build\\build_win.ps1 (needs Python 3.11+)."
+    }
+   ]
+  },
   {
    "version": "0.1.1",
    "date": "2026-09-20",

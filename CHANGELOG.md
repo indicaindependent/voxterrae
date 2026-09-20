@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.2 (unreleased)
+## 0.1.2 (2026-09-20)
 Polish and hardening pass. No protocol changes; the local store format is unchanged.
 
 **Windows 11 shell:** dark title bar and caption colours matched to the theme (DWM), explicit AppUserModelID for taskbar grouping, single-instance guard (a second launch raises the first window), close-to-tray with Quit in the tray menu and a one-time hint, crash guard writing `%LOCALAPPDATA%\VoxTerrae\logs\crash-*.log` and showing a dialog, rotating `voxterrae.log`, HiDPI pass-through rounding, persisted splitter sizes, 900x560 minimum.
