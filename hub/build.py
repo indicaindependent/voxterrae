@@ -47,7 +47,7 @@ def layout(title, body, path, desc="", extra_head=""):
     nav = [("/", "Home"), ("/download", "Download"), ("/releases", "Releases"), ("/docs", "Docs"), ("/security", "Security"), ("/about", "About")]
     CUR = ' aria-current="page"'
     links = "".join(f'<a class="l" href="{h}"{CUR if (path == h or (h != "/" and path.startswith(h))) else ""}>{t}</a>' for h, t in nav)
-    desc = desc or "VoxTerrae is the WarHeatMap.app IRC client: one click into #warheatmap on our IRCv3 home network and the classic EFnet rooms, with history, reactions, replies and notifications. Open source, no accounts, no telemetry."
+    desc = desc or "VoxTerrae is the WarHeatMap.app IRC client: one click into #warheatmap on our IRCv3 home network, with EFnet a /join away, plus history, reactions, replies and notifications. Open source, no accounts, no telemetry."
     canon = ORIGIN + (path if path != "/" else "/")
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(title)}</title><meta name="description" content="{html.escape(desc)}"><link rel="canonical" href="{canon}"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -78,11 +78,11 @@ def add(path, ctype, body): PAGES[path] = (ctype, body)
 # ---- home ------------------------------------------------------------------------------------
 src = LATEST["assets"][0]
 home = f"""<section class="hero"><div><div class="eyebrow">WarHeatMap.app · IRC 2026</div><h1>The door from the map to the room.</h1>
-<p class="lead">VoxTerrae is the WarHeatMap IRC client. One click puts you in <span class="mono">#warheatmap</span> on our home network and in the classic EFnet rooms at the same time, with history, reactions, replies and notifications. No accounts. No telemetry.</p>
+<p class="lead">VoxTerrae is the WarHeatMap IRC client. One click puts you in <span class="mono">#warheatmap</span> on our home network, the only room it ever joins for you, with history, reactions, replies and notifications. EFnet is connected and a <span class="mono">/join</span> away. No accounts. No telemetry.</p>
 <div class="btnrow"><a class="btn" href="/download">Download <span class="mono" style="font-weight:500;opacity:.8">v{REL['latest']}</span></a><a class="btn sec" href="/docs">Read the docs</a></div>
 <p class="fine">Windows portable exe is built from this source and listed as soon as it exists. Today's asset is the source bundle ({src['size']/1024:.0f} KB, SHA-256 published). <a href="/docs/install">Run from source</a> works now.</p></div>
 <figure class="shot" style="margin:0"><img src="/img/replymode.png" width="1280" height="720" alt="VoxTerrae dark-ops window: room list grouped by HOME and EFnet on the left, the #warheatmap timeline with reactions and a reply strip in the middle, the live-map rail and member list on the right" loading="eager" fetchpriority="high"></figure></section>
-<section class="tiles"><div class="tile"><h3>Two networks, one window</h3><p>HOME (<span class="mono">irc.warheatmap.app</span>, IRCv3) for history, reactions and replies; EFnet for the old rooms. Both connect on launch and reconnect on their own.</p></div>
+<section class="tiles"><div class="tile"><h3>Two networks, one window</h3><p>HOME (<span class="mono">irc.warheatmap.app</span>, IRCv3) for history, reactions and replies; EFnet, classic mode, for whatever you <span class="mono">/join</span>. Both connect on launch and reconnect on their own; nothing but #warheatmap is joined for you.</p></div>
 <div class="tile"><h3>History that catches you up</h3><p>Everything you saw is stored locally and searchable. On launch the client replays your history, then asks HOME only for what you missed. Never a duplicated line.</p></div>
 <div class="tile"><h3>Private by construction</h3><p>Data stays in <span class="mono">%LOCALAPPDATA%\\VoxTerrae</span>. The only network traffic is IRC and one update check. This site sets no cookies and runs no trackers.</p></div></section>
 <h2>How it works</h2>
@@ -142,7 +142,7 @@ add("/security", "text/html; charset=utf-8", layout("Security · VoxTerrae", sec
 add("/.well-known/security.txt", "text/plain; charset=utf-8", f"Contact: {SEC_CONTACT}\nExpires: {expires}\nPreferred-Languages: en\nCanonical: {ORIGIN}/.well-known/security.txt\nPolicy: {ORIGIN}/security\n")
 about = f"""<div class="eyebrow">About</div><h1>Why a client at all</h1>
 <p class="lead">warheatmap.app has daily readers all over the world. They needed a room, not another platform.</p>
-<p>IRC is open, federated, forty years old and still the fastest way to talk in text. What it lacked was the layer people expect in 2026: history you can scroll back into, reactions, threaded replies, notifications. IRCv3 provides all of that; our home network runs it. VoxTerrae is the client that makes it one click, and it keeps the classic EFnet rooms in the same window because that is where some of us have lived since the nineties.</p>
+<p>IRC is open, federated, forty years old and still the fastest way to talk in text. What it lacked was the layer people expect in 2026: history you can scroll back into, reactions, threaded replies, notifications. IRCv3 provides all of that; our home network runs it. VoxTerrae is the client that makes it one click, and it keeps EFnet in the same window, a /join away, because that is where some of us have lived since the nineties.</p>
 <h2>Licences</h2><table><tbody><tr><td>VoxTerrae</td><td>MIT</td></tr><tr><td>Qt via PySide6</td><td>LGPLv3. The application links Qt dynamically; you may replace the Qt libraries with your own build. Qt source: <a href="https://download.qt.io/">download.qt.io</a>.</td></tr><tr><td>qasync</td><td>BSD-2-Clause</td></tr><tr><td>Fonts</td><td>System fonts only (Cascadia, Segoe UI); nothing bundled.</td></tr></tbody></table>
 <h2>Contact</h2><p>#warheatmap on <span class="mono">irc.warheatmap.app</span>. Security reports: see <a href="/security">Security</a>.</p>"""
 add("/about", "text/html; charset=utf-8", layout("About · VoxTerrae", about, "/about", "Why VoxTerrae exists, and its licences."))

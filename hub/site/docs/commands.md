@@ -10,6 +10,7 @@ order: 4
 | `/reply <id> text` | Replies to a message by id (right-click → Reply does this for you) | HOME |
 | `/react <id> 🔥` | Reacts to a message (right-click → React) | HOME |
 | `/join #room` | Joins a room on the current network | both |
+| `/part [#room]` | Leaves a room (the current one if none given) | both |
 | `/me action` | Third-person action line | both |
 | `/raw LINE` | Sends a raw IRC line | both |
 

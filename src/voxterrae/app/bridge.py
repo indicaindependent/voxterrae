@@ -29,12 +29,18 @@ class Bridge:
         win.typing_changed.connect(self._on_typing)
         win.room_changed.connect(self._on_room_changed)
         self._members: Dict[str, List[str]] = {}
+        self.joined: Dict[str, List[str]] = {}      # net.key -> rooms we are actually in (JOIN/PART/KICK), drives the rail
+
+    def _rooms_for(self, net) -> List[str]:
+        """Rail entries for a network: its buffer, the rooms it will auto-join, then everything we joined ourselves."""
+        rooms = list(dict.fromkeys(list(net.autojoin) + self.joined.get(net.key, [])))
+        return [f"{net.key}/*server*"] + [f"{net.key}/{c}" for c in rooms if c != "*server*"]
 
     def start(self):
         groups = []
         for net in self.networks:
             s = NetworkSession(net, self.handle, self.pins, self._on_event); self.sessions[net.key] = s; s.start()
-            groups.append((net.name.split(" ")[0].upper(), "○ connecting", [f"{net.key}/{c}" for c in net.autojoin]))
+            groups.append((net.name.split(" ")[0].upper(), "connecting", self._rooms_for(net)))
         self.win.set_groups(groups)
         self._status_task = asyncio.get_event_loop().create_task(self._status_loop())
 
@@ -47,10 +53,11 @@ class Bridge:
             await asyncio.sleep(1.0)
             groups = []
             for net in self.networks:
-                s = self.sessions[net.key]; dot = "●" if s.state == "connected" else "○"
-                groups.append((net.name.split(" ")[0].upper(), f"{dot} {s.state}", [f"{net.key}/{c}" for c in net.autojoin]))
+                s = self.sessions[net.key]
+                groups.append((net.name.split(" ")[0].upper(), s.state, self._rooms_for(net)))
             self.win.rooms.set_groups(groups, self.win.active)
-            hs = self.sessions.get("home"); self.win.me.setText(f"● {self.handle} · " + (hs.state if hs else "?"))
+            hs = self.sessions.get("home"); st = hs.state if hs else "?"
+            self.win.me.setText(f"{self.handle} · {st}"); self.win.me.set_icon("dot" if st == "connected" else "ring", self.win.p.phosphor if st == "connected" else self.win.p.muted)
             if self.pins: json.dump(self.pins, open(self.pins_path, "w"))
 
     def _ts(self, m: Message) -> datetime:
@@ -102,8 +109,13 @@ class Bridge:
             self.win.add(key, Item("system", text=f"{len(names)} here on {sess.net.name}"))
         elif m.command == "332":
             self.win.add(f"{k}/{m.params[1]}", Item("system", text=f"topic: {m.params[-1]}"))
+        elif m.command in ("PART", "KICK") and (m.params[1] if m.command == "KICK" and len(m.params) > 1 else m.nick) == me:
+            room = m.params[0]
+            if room in self.joined.get(k, []): self.joined[k].remove(room)
+            self.win.add(f"{k}/{room}", Item("system", text=("kicked from " if m.command == "KICK" else "left ") + room))
         elif m.command == "JOIN" and m.nick == me:
             room = m.params[0]; key = f"{k}/{room}"
+            if room not in self.joined.setdefault(k, []): self.joined[k].append(room)
             if key not in self._history_loaded:
                 self._history_loaded.add(key); self._replay_store(k, room, key)
                 if sess.client and sess.client.has("draft/chathistory", "chathistory"):
@@ -113,6 +125,7 @@ class Bridge:
             self.win.add(f"{k}/*server*", Item("system", text=f"CTCP {m.params[1]} from {m.params[0]} (answered)"))
         elif m.command == "001":
             self.win.add(f"{k}/{sess.net.home_channel}", Item("system", text=f"connected to {sess.net.name} ({sess.server_used}) · caps: {', '.join(sorted(sess.client.caps_enabled)) or 'none'}"))
+            if not sess.net.autojoin: self.win.add(f"{k}/*server*", Item("system", text="nothing is joined for you here: type /join #channel to enter a room"))
 
     def _replay_store(self, k: str, room: str, key: str):
         rows = self.store.recent(k, room, 200); marker = self.store.read_marker(k, room); placed_marker = False
@@ -162,6 +175,7 @@ class Bridge:
             if text.startswith("/"):
                 cmd, _, rest = text[1:].partition(" ")
                 if cmd in ("join", "j"): await s.client.join(rest.strip()); return
+                if cmd in ("part", "leave"): await s.client.send_raw(f"PART {rest.strip() or room}"); return
                 if cmd == "me": await s.client.privmsg(room, f"\x01ACTION {rest}\x01"); return
                 if cmd == "raw": await s.client.send_raw(rest); return
                 if cmd in ("search", "s"):

@@ -5,7 +5,7 @@ The door from the map to the room. A WarHeatMap.app-branded IRC client (Python /
 | Network | Servers | Mode |
 |---|---|---|
 | **HOME** `irc.warheatmap.app` | 6697, CA-verified TLS | IRCv3: history, reactions, replies, typing, read markers |
-| **EFnet** | `irc.efnet.nl` 6697 (CA) → `irc.prison.net` / `irc.underworld.no` / `irc.choopa.net` 6697 (self-signed, pinned on first use) → `irc.prison.net` 6667 plaintext last resort | classic: five porch rooms, no client tags, no link previews |
+| **EFnet** | `irc.efnet.nl` 6697 (CA) → `irc.prison.net` / `irc.underworld.no` / `irc.choopa.net` 6697 (self-signed, pinned on first use) → `irc.prison.net` 6667 plaintext last resort | classic: joins nothing for you (`/join` a channel), no client tags, no link previews |
 
 ## Run from source
 ```

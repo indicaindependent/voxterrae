@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 from PySide6.QtCore import QAbstractListModel, QModelIndex, QRect, QRectF, QSize, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen, QTextDocument, QTextOption
 from PySide6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem
+from .icons import pixmap
 from .theme import Palette, BODY_PX
 
 @dataclass
@@ -82,7 +83,8 @@ class TimelineDelegate(QStyledItemDelegate):
             painter.setPen(pen); painter.drawLine(r.left() + self.GUTTER, cy, r.center().x() - tw // 2 - 10, cy); painter.drawLine(r.center().x() + tw // 2 + 10, cy, r.right() - self.GUTTER, cy)
             painter.setPen(QColor(p.muted if it.kind == "day" else p.phosphor)); painter.drawText(r, Qt.AlignCenter, label); painter.restore(); return
         if it.kind == "system":
-            painter.setFont(self.f_small); painter.setPen(QColor(p.cyan)); painter.drawText(r.adjusted(self.GUTTER, 0, -self.GUTTER, 0), Qt.AlignVCenter | Qt.AlignLeft, "▸ " + it.text); painter.restore(); return
+            painter.setFont(self.f_small); painter.setPen(QColor(p.cyan)); ic = pixmap("chevron", p.cyan, 12)
+            painter.drawPixmap(r.left() + self.GUTTER, r.center().y() - 6, ic); painter.drawText(r.adjusted(self.GUTTER + 16, 0, -self.GUTTER, 0), Qt.AlignVCenter | Qt.AlignLeft, it.text); painter.restore(); return
         if it.highlight:
             painter.fillRect(r, QColor(p.phosphor + "14")); painter.fillRect(QRect(r.left(), r.top(), 2, r.height()), QColor(p.phosphor))
         x = r.left() + self.GUTTER; y = r.top() + self.PAD // 2; wmax = r.width() - 2 * self.GUTTER
@@ -98,8 +100,8 @@ class TimelineDelegate(QStyledItemDelegate):
         if it.reply_to_nick:
             painter.setPen(QPen(QColor(p.grid), 2)); painter.drawLine(x + 2, y + 4, x + 2, y + 16)
             painter.setFont(self.f_small); painter.setPen(QColor(p.muted))
-            snippet = QFontMetrics(self.f_small).elidedText(f"↳ replying to {it.reply_to_nick}: {it.reply_to_text}", Qt.ElideRight, wmax - 12)
-            painter.drawText(x + 10, y + 14, snippet); y += 22
+            snippet = QFontMetrics(self.f_small).elidedText(f"replying to {it.reply_to_nick}: {it.reply_to_text}", Qt.ElideRight, wmax - 28)
+            painter.drawPixmap(x + 8, y + 3, pixmap("reply", p.muted, 12)); painter.drawText(x + 24, y + 14, snippet); y += 22
         doc = self._doc(it.text, wmax); painter.translate(x, y)
         ctx_color = QColor(p.text); doc.setDefaultStyleSheet(""); painter.setPen(ctx_color)
         from PySide6.QtGui import QAbstractTextDocumentLayout

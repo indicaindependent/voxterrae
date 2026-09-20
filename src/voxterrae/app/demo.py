@@ -2,10 +2,10 @@
 from datetime import datetime, timedelta
 from .timeline import Item
 def populate(win):
-    win.set_groups([("HOME", "● connected", ["home/#warheatmap", "home/#ukraine", "home/#hormuz", "home/#osint", "home/#help", "home/Axiom"]),
-                    ("EFNET", "● connected", ["efnet/#room-a", "efnet/#room-b", "efnet/#room-c"])])
-    win.rooms.bump("home/#ukraine", 3); win.rooms.bump("home/#hormuz", 12); win.rooms.bump("home/Axiom", 1); win.rooms.bump("efnet/#room-a", 2)
-    win.meta.setText("· 214 online · topic: the live map, discussed"); win.me.setText("● pete · online")
+    win.set_groups([("HOME", "connected", ["home/*server*", "home/#warheatmap", "home/Axiom"]),
+                    ("EFNET", "connected", ["efnet/*server*"])])
+    win.rooms.bump("home/Axiom", 1); win.add("efnet/*server*", Item("system", text="nothing is joined for you here: type /join #channel to enter a room"))
+    win.meta.setText("· 214 online · topic: the live map, discussed"); win.me.setText("pete · online"); win.me.set_icon("dot", win.p.phosphor)
     t0 = datetime(2026, 9, 20, 2, 1)
     A = lambda n, s, txt, **k: win.add("home/#warheatmap", Item("msg", nick=n, text=txt, ts=t0 + timedelta(seconds=s), msgid=f"m{s}", **k))
     A("Axiom", 0, "New WarDesk thread is live: Ukraine, 8 posts on a 7-minute drip. Event #48812 pinned for this room.", is_bot=True)

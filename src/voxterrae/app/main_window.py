@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QLineEdit, QListView
                                QPushButton, QSizePolicy, QVBoxLayout, QWidget, QSplitter, QStackedWidget, QMenu, QSystemTrayIcon, QApplication)
 from .theme import Palette, qss, THEMES
 from .timeline import TimelineModel, TimelineDelegate, Item
+from .icons import IconLabel, icon, pixmap
 from .. import __version__ as APP_VERSION
 
 class Welcome(QWidget):
@@ -16,7 +17,7 @@ class Welcome(QWidget):
     def __init__(self, p: Palette):
         super().__init__(); self.p = p
         lay = QVBoxLayout(self); lay.setAlignment(Qt.AlignCenter); lay.setSpacing(16)
-        mark = QLabel("▣ VOXTERRAE"); mark.setObjectName("wordmark"); mark.setAlignment(Qt.AlignCenter)
+        mark = IconLabel("mark", p.phosphor, "VOXTERRAE", size=32, object_name="wordmark"); mark.layout().setAlignment(Qt.AlignCenter); mark.layout().takeAt(mark.layout().count() - 1)
         f = mark.font(); f.setPixelSize(34); mark.setFont(f)
         sub = QLabel("the door from the map to the room"); sub.setObjectName("sectionHead"); sub.setAlignment(Qt.AlignCenter)
         self.handle = QLineEdit(); self.handle.setObjectName("composer"); self.handle.setPlaceholderText("pick a handle (optional)"); self.handle.setFixedWidth(340); self.handle.setAlignment(Qt.AlignCenter)
@@ -27,18 +28,22 @@ class Welcome(QWidget):
 
 class RoomList(QListWidget):
     """Rooms grouped by network. Item data = room key "netkey/#chan"; header items are unselectable."""
-    def __init__(self):
-        super().__init__(); self.setObjectName("roomList"); self.setFrameShape(QFrame.NoFrame); self._unread: Dict[str, int] = {}
+    def __init__(self, p: Palette):
+        super().__init__(); self.p = p; self.setObjectName("roomList"); self.setFrameShape(QFrame.NoFrame); self._unread: Dict[str, int] = {}; self.setIconSize(QSize(10, 10))
     def set_groups(self, groups: List[tuple], active: str):
         """groups = [(net_label, net_state, [room_key, ...]), ...]"""
+        self.blockSignals(True)   # QListWidget.clear() moves "current" onto a random surviving row while items are removed; that fired show_room() on an unrelated room and wiped its unread badge
         self.clear()
         for label, state, keys in groups:
-            h = QListWidgetItem(f"{label}   {state}"); h.setFlags(Qt.NoItemFlags); f = h.font(); f.setPixelSize(11); f.setBold(True); h.setFont(f); h.setData(Qt.UserRole, None); self.addItem(h)
+            h = QListWidgetItem(f"{label}   {state}"); h.setFlags(Qt.NoItemFlags); f = h.font(); f.setPixelSize(11); f.setBold(True); h.setFont(f); h.setData(Qt.UserRole, None)
+            h.setIcon(icon("dot" if state == "connected" else "ring", self.p.phosphor if state == "connected" else self.p.muted, 10)); self.addItem(h)
             for k in keys:
                 it = QListWidgetItem(self._label(k)); it.setData(Qt.UserRole, k); self.addItem(it)
                 if k == active: self.setCurrentItem(it)
+        self.blockSignals(False)
     def _label(self, k: str) -> str:
         n = self._unread.get(k, 0); name = k.split("/", 1)[1] if "/" in k else k
+        if name == "*server*": name = "network"
         return f"   {name}" + (f"   ·{n}" if n else "")
     def bump(self, key: str, n: int):
         self._unread[key] = n
@@ -56,7 +61,7 @@ class MapRail(QFrame):
         lay.addSpacing(8); c = QLabel("WARDESK · LATEST"); c.setObjectName("cardTitle"); lay.addWidget(c)
         card = QFrame(); card.setObjectName("card"); cl = QVBoxLayout(card); cl.setContentsMargins(10, 10, 10, 10)
         self.card_title = QLabel("Ukraine WarDesk · 8 posts · 7-min drip"); self.card_title.setWordWrap(True)
-        self.card_meta = QLabel("fired 02:04 ET · 5.40★"); self.card_meta.setObjectName("status")
+        self.card_meta = IconLabel("star", self.p.phosphor, "fired 02:04 ET · 5.40", size=12, object_name="status", after=True)
         cl.addWidget(self.card_title); cl.addWidget(self.card_meta); lay.addWidget(card)
         lay.addSpacing(8); m = QLabel("MEMBERS"); m.setObjectName("sectionHead"); lay.addWidget(m)
         self.members = QListWidget(); self.members.setFrameShape(QFrame.NoFrame); lay.addWidget(self.members, 1)
@@ -65,7 +70,7 @@ class MapRail(QFrame):
             w = self.ticker.takeAt(0).widget()
             if w: w.deleteLater()
         for theatre, text in evs:
-            l = QLabel(("🟥 " if theatre == "red" else "🟦 ") + text); l.setObjectName("eventRed" if theatre == "red" else "eventBlue"); l.setWordWrap(True); self.ticker.addWidget(l)
+            l = IconLabel("square", self.p.red if theatre == "red" else self.p.cyan, text, size=12, object_name="eventRed" if theatre == "red" else "eventBlue", word_wrap=True); self.ticker.addWidget(l)
     def set_members(self, names: List[str]):
         self.members.clear()
         for n in names: self.members.addItem(n)
@@ -119,11 +124,11 @@ class MainWindow(QMainWindow):
         root = QHBoxLayout(self.chat); root.setContentsMargins(10, 10, 10, 10); root.setSpacing(10)
         # left: rooms
         left = QFrame(); left.setObjectName("rooms"); left.setFixedWidth(220); ll = QVBoxLayout(left); ll.setContentsMargins(12, 12, 12, 12)
-        mark = QLabel("▣ VOXTERRAE"); mark.setObjectName("wordmark"); ll.addWidget(mark)
+        mark = IconLabel("mark", self.p.phosphor, "VOXTERRAE", size=18, object_name="wordmark"); ll.addWidget(mark)
         rh = QLabel("ROOMS"); rh.setObjectName("sectionHead"); ll.addWidget(rh)
-        self.rooms = RoomList(); ll.addWidget(self.rooms, 1)
+        self.rooms = RoomList(self.p); ll.addWidget(self.rooms, 1)
         self.rooms.currentItemChanged.connect(lambda cur, prev: cur and cur.data(Qt.UserRole) and self.show_room(cur.data(Qt.UserRole)))
-        self.me = QLabel("● connecting…"); self.me.setObjectName("status"); ll.addWidget(self.me)
+        self.me = IconLabel("ring", self.p.muted, "connecting…", size=12, object_name="status"); ll.addWidget(self.me)
         root.addWidget(left)
         # centre: timeline
         mid = QFrame(); mid.setObjectName("timeline"); ml = QVBoxLayout(mid); ml.setContentsMargins(0, 0, 0, 0); ml.setSpacing(0)
@@ -135,8 +140,8 @@ class MainWindow(QMainWindow):
         self.view.setWordWrap(True); self.view.setResizeMode(QListView.Adjust); ml.addWidget(self.view, 1)
         self.typing = QLabel(""); self.typing.setObjectName("typing"); self.typing.setContentsMargins(14, 0, 14, 4); ml.addWidget(self.typing)
         self.reply_strip = QWidget(); rs = QHBoxLayout(self.reply_strip); rs.setContentsMargins(14, 0, 14, 0)
-        self.reply_label = QLabel(""); self.reply_label.setObjectName("typing"); rs.addWidget(self.reply_label, 1)
-        cancel = QPushButton("✕"); cancel.setFixedSize(24, 22); cancel.setToolTip("cancel reply (Esc)"); cancel.clicked.connect(self.clear_reply); rs.addWidget(cancel)
+        self.reply_label = IconLabel("reply", self.p.cyan, "", size=12, object_name="typing"); rs.addWidget(self.reply_label, 1)
+        cancel = QPushButton(); cancel.setIcon(icon("close", self.p.muted, 12)); cancel.setIconSize(QSize(12, 12)); cancel.setFixedSize(24, 22); cancel.setToolTip("cancel reply (Esc)"); cancel.clicked.connect(self.clear_reply); rs.addWidget(cancel)
         self.reply_strip.hide(); ml.addWidget(self.reply_strip)
         comp = QWidget(); cl = QHBoxLayout(comp); cl.setContentsMargins(12, 6, 12, 12)
         self.composer = QLineEdit(); self.composer.setObjectName("composer"); self.composer.setPlaceholderText("message #warheatmap …  (Enter to send · /help)")
@@ -155,7 +160,7 @@ class MainWindow(QMainWindow):
     def show_room(self, key: str):
         changed = key != self.active   # set_groups() re-shows the active room on every roster change; that must not clear the badge
         self.active = key; name = key.split("/", 1)[1] if "/" in key else key
-        self.title.setText(name); self.view.setModel(self.models.setdefault(key, TimelineModel())); self.view.scrollToBottom()
+        self.title.setText("network" if name == "*server*" else name); self.view.setModel(self.models.setdefault(key, TimelineModel())); self.view.scrollToBottom()
         net = self.net_labels.get(key, ""); self.composer.setPlaceholderText(f"message {name} on {net} …  (Enter to send · /help)"); self.rooms.bump(key, 0)
         self.clear_reply(); self.room_changed.emit(key)
         if changed and self.unread_total:  # switching to a room clears the mention badge; the per-room counts stay honest on the rail
@@ -181,7 +186,7 @@ class MainWindow(QMainWindow):
         self._typing_timer.start(4000)   # +typing=active is re-sent by the bridge at most every few seconds; done after 4 s idle
 
     def set_reply(self, it: Item):
-        self.reply_to = it; self.reply_label.setText(f"↳ replying to {it.nick}: {it.text[:90]}"); self.reply_strip.show(); self.composer.setFocus()
+        self.reply_to = it; self.reply_label.setText(f"replying to {it.nick}: {it.text[:90]}"); self.reply_strip.show(); self.composer.setFocus()
     def clear_reply(self):
         self.reply_to = None; self.reply_strip.hide()
     def keyPressEvent(self, e):

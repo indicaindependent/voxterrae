@@ -16,4 +16,4 @@ def test_store_roundtrip_dedupe_fts_reactions(tmp_path):
     a = local_msgid("efnet", "#room", "bob", "2026-09-20T06:00:00", "hi"); b = local_msgid("efnet", "#room", "bob", "2026-09-20T06:00:00", "hi")
     assert a == b and a != local_msgid("efnet", "#room", "bob", "2026-09-20T06:00:00", "hi!")
     # a nested control: same text, different room -> different row
-    assert s.add("home", "#ukraine", "m1", ts, "maya", "is the Kharkiv strike on the map yet?") is True and s.count() == 2
+    assert s.add("home", "#vt-store-test", "m1", ts, "maya", "is the new event on the map yet?") is True and s.count() == 2

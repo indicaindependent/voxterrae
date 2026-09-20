@@ -25,7 +25,10 @@ def main():
                 b = self.findChild(object, "") ; 
                 st = [i.text() for i in [self.rooms.item(j) for j in range(self.rooms.count())] if i.data(0x0100) is None]
                 if len(st) == 2 and all("connected" in t for t in st): break
-            print("WELCOME PROOF:", {"on_chat": self.stack.currentWidget() is self.chat, "group_headers": st, "me": self.me.text(), "rooms": self.rooms.count()})
+            keys = [self.rooms.item(j).data(0x0100) for j in range(self.rooms.count()) if self.rooms.item(j).data(0x0100)]
+            efnet_rooms = [k for k in keys if k.startswith("efnet/") and not k.endswith("*server*")]
+            assert efnet_rooms == [], f"EFnet auto-joined something: {efnet_rooms}"   # Pete's rule: #warheatmap is the only auto-join anywhere
+            print("WELCOME PROOF:", {"on_chat": self.stack.currentWidget() is self.chat, "group_headers": st, "me": self.me.text(), "rooms": keys, "efnet_autojoined": efnet_rooms})
             QApplication.instance().quit()
         asyncio.get_event_loop().create_task(drive())
     MainWindow.show = show

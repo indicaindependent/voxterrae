@@ -7,7 +7,7 @@ order: 3
 Our own IRCv3 server (Ergo). It supports the modern features: server-side history, reactions, replies, typing indicators, read markers, multi-line messages, message ids. TLS on 6697 with a public CA certificate; the client refuses anything else.
 
 ## EFnet
-A 1990s network with no services and no message ids. Reactions and replies are not possible there, so the client switches to **classic mode**: plain lines, `/me`, quoting instead of replying. No rooms are joined automatically on EFnet: use `/join #room` for anything you want to be in.
+A 1990s network with no services and no message ids. Reactions and replies are not possible there, so the client switches to **classic mode**: plain lines, `/me`, quoting instead of replying. Nothing is joined for you on EFnet: the client connects, shows the network buffer, and you `/join #channel` whatever you like. **#warheatmap on HOME is the only room VoxTerrae ever auto-joins, on any network.**
 
 Most EFnet servers present **self-signed** TLS certificates. VoxTerrae handles this with **trust on first use**: the first time it meets a server it records the certificate's SHA-256 fingerprint in `tls_pins.json`; if the fingerprint ever changes it refuses to connect and tells you. `irc.efnet.nl` has a public CA certificate and is tried first. Plaintext on 6667 is the very last fallback and is labelled as such in the network buffer.
 

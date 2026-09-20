@@ -8,20 +8,22 @@
    "title": "First public source release",
    "notes": [
     "Connects to HOME (irc.warheatmap.app, IRCv3) and EFnet (server pool with first-use certificate pinning) at the same time",
+    "Auto-joins exactly one room, #warheatmap on HOME; EFnet is connected and a /join away",
     "Local history: SQLite with full-text search, replay without duplicates, server history fetched only for what you missed",
     "Reactions, replies with context, typing indicators, read markers on HOME rooms; classic mode on EFnet",
     "Mention and direct-message notifications, tray badge, remembered window geometry",
     "Commands: /search /ask /reply /react /join /me; right-click a message for Reply, React, Copy",
     "Answers CTCP VERSION automatically (EFnet drone monitors check every new client)",
-    "In-app update check against this site\u2019s /api/latest.json: one plain GET, nothing downloaded or installed for you"
+    "In-app update check against this site\u2019s /api/latest.json: one plain GET, nothing downloaded or installed for you",
+    "Chrome icons are inline SVG (no emoji or text glyphs in the UI; reactions stay as message content)"
    ],
    "assets": [
     {
      "file": "voxterrae-src-0.1.0.zip",
      "kind": "source",
      "platform": "any",
-     "size": 47577,
-     "sha256": "438407330c1c3998edc45903c5ffff990f21696bf9977bc2b77dfdfc72fcdc18",
+     "size": 52339,
+     "sha256": "92bb8c202328c4848683b399f911bf805be39d0e28bbc3f2153782ef7b0fc1ab",
      "note": "Source bundle. Build the Windows portable exe with build\\build_win.ps1 (needs Python 3.11+)."
     }
    ],

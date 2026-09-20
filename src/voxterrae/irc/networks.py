@@ -42,9 +42,8 @@ EFNET = Network(
         Server("irc.choopa.net", 6697, True, "tofu"),
         Server("irc.prison.net", 6667, False, "strict"),
     ],
-    # Pete's standing instruction 2026-09-20: VoxTerrae autojoins NOTHING except #warheatmap on
-    # HOME. No channel on any other network is joined automatically or named in this repo.
-    autojoin=[], home_channel="*server*",   # *server* is this codebase's existing network-buffer name
+    autojoin=[],                 # Pete's rule (Sep 20 2026): #warheatmap on HOME is the ONLY room any network auto-joins
+    home_channel="*server*",     # the network buffer; you /join what you like
     blurb="The 1990 original. No services, no history: what you see is what was said while you were here.",
 )
 BUILTIN: List[Network] = [HOME, EFNET]
