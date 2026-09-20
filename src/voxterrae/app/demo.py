@@ -20,4 +20,4 @@ def populate(win):
     win.typing.setText("maya_k is typing…")
     win.set_reply(win.models["home/#warheatmap"].items[-3]); win.composer.setText("the amber marker is the single-source state, red means two")
     win.rail.set_events([("red", "Hormuz · tanker hit, 2 sources · 01:12"), ("blue", "Kharkiv · strike, verified · 01:40"), ("red", "Red Sea · UAV intercept · 00:58")])
-    win.rail.set_members(["~ Axiom", "@ pete", "@ bumbo", "% maya_k", "+ jonas.dk", "  anna_r", "  kwame", "  lior_", "  +207 more"])
+    win.rail.set_members(["~ Axiom", "@ desk_ops", "@ cartographer", "% maya_k", "+ jonas.dk", "  anna_r", "  kwame", "  lior_", "  +207 more"])

@@ -6,6 +6,9 @@
 """
 import argparse, asyncio, getpass, os, re, sys
 
+# Absolute imports on purpose: PyInstaller runs this file as a top-level script (no parent package),
+# so relative imports here raise "attempted relative import with no known parent package" at launch.
+
 def _default_handle() -> str:
     raw = os.environ.get("VOXTERRAE_HANDLE") or getpass.getuser() or "guest"
     h = re.sub(r"[^A-Za-z0-9_\-\[\]\\`^{}|]", "", raw)[:16]
@@ -19,8 +22,8 @@ def main(argv=None):
     from PySide6.QtWidgets import QApplication
     from PySide6.QtCore import QSettings
     import qasync
-    from .main_window import MainWindow
-    from .bridge import Bridge
+    from voxterrae.app.main_window import MainWindow
+    from voxterrae.app.bridge import Bridge
     app = QApplication(sys.argv[:1]); app.setApplicationName("VoxTerrae"); app.setOrganizationName("VoxTerrae")
     settings = QSettings("VoxTerrae", "VoxTerrae")
     theme = a.theme or settings.value("theme", "darkops")
@@ -34,8 +37,8 @@ def main(argv=None):
         state["bridge"] = Bridge(win, handle); state["bridge"].start()
         win.stack.setCurrentWidget(win.chat)
         if not os.environ.get("VOXTERRAE_NO_UPDATE_CHECK"):
-            from .updates import check_async
-            from .updates import FEED_URL
+            from voxterrae.app.updates import check_async
+            from voxterrae.app.updates import FEED_URL
             check_async(win.update_result.emit, url=os.environ.get("VOXTERRAE_UPDATE_FEED") or FEED_URL)
 
     win.welcome.handle.setText(settings.value("handle", "")); win.welcome.handle.setPlaceholderText(f"handle (default: {_default_handle()})")
@@ -52,7 +55,7 @@ def main(argv=None):
         app.quit()
 
     if a.demo:
-        from .demo import populate; populate(win)
+        from voxterrae.app.demo import populate; populate(win)
         if not a.welcome: win.stack.setCurrentWidget(win.chat)
     elif a.live:
         loop.call_soon(start_live, a.live)   # sessions create asyncio tasks, so this must run inside the loop

@@ -4,11 +4,11 @@ import os
 block_cipher = None
 ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))
 a = Analysis(
-    [os.path.join(ROOT, "src", "voxterrae", "app", "__main__.py")],
+    [os.path.join(SPECPATH, "launcher.py")],   # NOT the package __main__.py: run as a script it has no parent package
     pathex=[os.path.join(ROOT, "src")],
     binaries=[],
     datas=[],
-    hiddenimports=["qasync", "voxterrae.app.bridge", "voxterrae.app.demo", "voxterrae.irc.session", "voxterrae.store"],
+    hiddenimports=["qasync", "voxterrae", "voxterrae.app", "voxterrae.app.__main__", "voxterrae.app.main_window", "voxterrae.app.bridge", "voxterrae.app.demo", "voxterrae.app.updates", "voxterrae.irc.session", "voxterrae.irc.networks", "voxterrae.store"],
     hookspath=[], runtime_hooks=[],
     excludes=["PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets", "PySide6.Qt3DCore", "PySide6.QtMultimedia", "PySide6.QtQuick", "PySide6.QtQml", "PySide6.QtCharts", "PySide6.QtPdf", "tkinter"],
     cipher=block_cipher, noarchive=False,
