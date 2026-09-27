@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: voxterrae
+Version: 0.3.0
+Summary: VoxTerrae — the WarHeatMap.app IRC client
+License: MIT
+Requires-Python: >=3.11
+License-File: LICENSE
+Provides-Extra: ui
+Requires-Dist: PySide6>=6.8; extra == "ui"
+Requires-Dist: qasync>=0.27; extra == "ui"
+Requires-Dist: keyring>=25; extra == "ui"
+Requires-Dist: cryptography>=43; extra == "ui"
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Dynamic: license-file

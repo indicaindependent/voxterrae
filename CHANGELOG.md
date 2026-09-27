@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.3.0 (2026-09-26)
+**The VoxTerrae Layer.** Profiles, reactions, threaded replies and "who else is here" over plain EFnet, for people using
+VoxTerrae. Everyone else sees ordinary IRC; a reply also posts a short `> <nick> quote…` line so classic clients can follow.
+
+- Your nick is verified once per session with a one-time code that cablepair sends you over IRC (a `NOTICE`, consumed by the
+  client, never shown). Identity is an Ed25519 key made on your machine (`layer_key` in the profile folder). No account.
+- What leaves your computer: your nick, a 12-hex hash of each message you send (room, nick, normalized text, minute), your
+  reactions, and the profile you write. Message text and private messages never do. `/layer wipe` erases everything.
+- Hover Reply / React now work in every room. `/react`, `/reply` route through the layer on plain IRC; `/profile nick`,
+  `/profile edit`, `/layer status|verify|off|wipe`, `/upload path.png` (images kept 30 days) are new. Members menu: "VoxTerrae profile".
+- A one-screen consent appears at first launch (layer on by default, Settings → Layer to change).
+- New dependency in the `ui` extra: `cryptography`. Tests: `tests/test_layer.py` (vid law, quote line, WebSocket framing, key file).
+
+## 0.2.0 (2026-09-26)
+**One network.** The project-run HOME network (`irc.warheatmap.app`, Ergo) has been retired. VoxTerrae now connects to **EFnet only** and auto-joins exactly one room, **#warheatmap**, which is home. Nothing else is joined for you; `/join` what you like.
+
+- `networks.py`: the HOME network object is gone; `BUILTIN` is `[EFNET]`; EFnet `autojoin=["#warheatmap"]`, `home_channel="#warheatmap"`.
+- Bridge: the identity line, connection status and `/ask` (Axiom lives in #warheatmap) follow EFnet. Reply/react in the timeline are gated on a message id being present, not on the network name; plain EFnet has none, so Quote is the way (the VoxTerrae layer will supply ids between VoxTerrae users in a later release).
+- Welcome screen, About, demo, hub copy and docs rewritten for one network. Update notices go to every joined room.
+- Tests: `test_autojoin_law` now asserts EFnet-only + #warheatmap-only and that no HOME object or `warheatmap.app` host remains; the HOME live proofs moved to `tests/retired_home_network/` (not collected). `welcome_proof.py` (live) waits for one network header and asserts the auto-join list is exactly `["#warheatmap"]`: proven against real EFnet on 2026-09-26.
+- Local store format unchanged. Existing `home/...` rows in `voxterrae.db` are kept but no longer displayed.
+
+**Upgrade note:** 0.1.x clients will show HOME as unreachable forever; the update notice in 0.1.2 points here.
+
 ## 0.1.2 (2026-09-20)
 Polish and hardening pass. No protocol changes; the local store format is unchanged.
 

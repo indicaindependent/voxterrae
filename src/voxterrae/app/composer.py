@@ -12,9 +12,9 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QListWidget, QListWid
 SAFE_BYTES = 400
 COMMANDS: List[Tuple[str, str]] = [
     ("/join #room", "enter a room (EFnet joins nothing for you)"), ("/part", "leave this room"), ("/me does something", "action line"),
-    ("/msg nick text", "private message"), ("/search words", "local full-text search on this network"), ("/ask question", "ask Axiom (HOME rooms)"),
-    ("/reply <msgid> text", "reply with context (HOME)"), ("/react <msgid> 🔥", "react to a message (HOME)"), ("/topic", "show the room topic"),
-    ("/whois nick", "who is that"), ("/nick newname", "change your handle"), ("/clear", "clear this view"), ("/help", "this list"),
+    ("/msg nick text", "private message"), ("/search words", "local full-text search on this network"), ("/ask question", "ask Axiom (in #warheatmap)"),
+    ("/reply <msgid> text", "reply with context (VoxTerrae users)"), ("/react <msgid> 🔥", "react to a message (VoxTerrae users)"), ("/topic", "show the room topic"),
+    ("/whois nick", "who is that"), ("/profile nick", "VoxTerrae profile card (/profile edit for yours)"), ("/layer status", "layer: status | verify | off | wipe"), ("/upload C:\\path\\img.png", "share an image via the layer (30-day link)"), ("/nick newname", "change your handle"), ("/clear", "clear this view"), ("/help", "this list"),
 ]
 
 class CommandPopup(QFrame):

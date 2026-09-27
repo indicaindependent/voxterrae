@@ -11,14 +11,14 @@ from voxterrae.app.timeline import Item
 def test_roster_refresh_keeps_badges():
     app = QApplication.instance() or QApplication([])
     w = MainWindow("darkops")
-    g = [("HOME", "connected", ["home/*server*", "home/#warheatmap", "home/#example"]), ("EFNET", "connected", ["efnet/*server*"])]
-    w.set_groups(g); w.show_room("home/#warheatmap")
-    w.add("home/#example", Item("msg", nick="peer", text="hey", ts=datetime.now(timezone.utc), msgid="x1", highlight=True))
-    w.notify("home/#example", "peer", "hey", "mention")
-    assert (w.unread_total, w.rooms._unread["home/#example"]) == (1, 1)
+    g = [("EFNET", "connected", ["efnet/*server*", "efnet/#warheatmap", "efnet/#example"])]
+    w.set_groups(g); w.show_room("efnet/#warheatmap")
+    w.add("efnet/#example", Item("msg", nick="peer", text="hey", ts=datetime.now(timezone.utc), msgid="x1", highlight=True))
+    w.notify("efnet/#example", "peer", "hey", "mention")
+    assert (w.unread_total, w.rooms._unread["efnet/#example"]) == (1, 1)
     for _ in range(3): w.set_groups(g)          # bridge status loop
-    assert w.active == "home/#warheatmap"
-    assert (w.unread_total, w.rooms._unread["home/#example"]) == (1, 1), "roster refresh cleared a badge"
+    assert w.active == "efnet/#warheatmap"
+    assert (w.unread_total, w.rooms._unread["efnet/#example"]) == (1, 1), "roster refresh cleared a badge"
     assert w.windowTitle() == "VoxTerrae (1)"
-    w.show_room("home/#example")               # a real switch clears it
-    assert (w.unread_total, w.rooms._unread["home/#example"]) == (0, 0)
+    w.show_room("efnet/#example")               # a real switch clears it
+    assert (w.unread_total, w.rooms._unread["efnet/#example"]) == (0, 0)

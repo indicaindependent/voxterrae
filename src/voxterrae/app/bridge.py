@@ -1,5 +1,6 @@
 """Bridge: NetworkSessions (asyncio via qasync) -> MainWindow models. One process, N networks."""
 from __future__ import annotations
+EFNET_KEY = "efnet"  # 0.2.0: the only network
 import asyncio, json, os
 from datetime import datetime, timezone
 from typing import Dict, List
@@ -8,6 +9,7 @@ from ..irc.session import NetworkSession
 from ..irc.message import Message
 from .timeline import Item, TimelineModel, presence_item
 from ..store import Store, local_msgid
+from .layer import LayerClient, quote_line, profile_card
 
 def _profile_dir() -> str:
     base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~/.local/share")
@@ -34,6 +36,13 @@ class Bridge:
         self._members: Dict[str, List[str]] = {}
         self.dms: Dict[str, List[str]] = {}         # net.key -> open private conversations (rail rows)
         self.joined: Dict[str, List[str]] = {}      # net.key -> rooms we are actually in (JOIN/PART/KICK), drives the rail
+        prefs = getattr(win, 'prefs', None)
+        self.layer = LayerClient(_profile_dir(), enabled=bool(getattr(prefs, 'layer_enabled', True)))
+        self.layer.reaction.connect(self._layer_reaction); self.layer.reply.connect(self._layer_reply)
+        self.layer.presence.connect(self._layer_presence); self.layer.typing.connect(self._layer_typing)
+        self.layer.status.connect(lambda t: self.win.add(self.win.active, Item('system', text=t)) if self.win.active else None)
+        self.layer.verified.connect(lambda n: asyncio.get_event_loop().create_task(self._layer_after_verify()))
+        self._claimed_for: str = ''
 
     def _rooms_for(self, net) -> List[str]:
         """Rail entries for a network: its buffer, the rooms it will auto-join, then everything we joined ourselves."""
@@ -90,7 +99,7 @@ class Bridge:
                 if s.state == "connected" and s.client and self._announced.get(net.key) != s.server_used:
                     # 001 is consumed inside connect() before the session attaches our handler, so announce from here
                     self._announced[net.key] = s.server_used
-                    if net.key == "home": self.win.set_me(s.client.nick)
+                    if net.key == EFNET_KEY: self.win.set_me(s.client.nick); self._on_layer_connected(s.client.nick)
                     self.win.add(f"{net.key}/*server*", Item("system", text=f"connected to {net.name} ({s.server_used}) as {s.client.nick} · caps: {', '.join(sorted(s.client.caps_enabled)) or 'none'}"))
                     if not net.autojoin: self.win.add(f"{net.key}/*server*", Item("system", text="nothing is joined for you here: type /join #channel to enter a room"))
                 if hasattr(self.win, "set_net_state"):
@@ -98,7 +107,7 @@ class Bridge:
                     lag = getattr(s.client, "lag_ms", None) if s.client else None
                     if lag is not None and s.state == "connected": self.win.set_lag(net.key, lag)
             self.win.rooms.set_groups(groups, self.win.active)
-            hs = self.sessions.get("home"); st = hs.state if hs else "?"
+            hs = self.sessions.get(EFNET_KEY); st = hs.state if hs else "?"
             self.win.me.setText(f"{self.handle} · {st}"); self.win.me.set_icon("dot" if st == "connected" else "ring", self.win.p.phosphor if st == "connected" else self.win.p.muted)
             if self.pins: json.dump(self.pins, open(self.pins_path, "w"))
 
@@ -111,6 +120,7 @@ class Bridge:
 
     def _on_event(self, sess: NetworkSession, m: Message):
         k = sess.net.key; me = sess.client.nick if sess.client else self.handle
+        if m.command == "NOTICE" and m.params and self.layer.feed_notice(m.params[-1]): return   # our own verification code: consumed, never shown
         if m.command in ("PRIVMSG", "NOTICE") and m.params:
             target = m.params[0]
             if target.startswith(("#", "&")): room = target
@@ -132,6 +142,7 @@ class Bridge:
             self.win.add(key, Item("msg", nick=nick, text=text, ts=ts, msgid=mid, is_me=(nick == me),
                                    is_bot=nick.lower().startswith("axiom"), highlight=hl,
                                    reply_to_nick=rn, reply_to_text=rt, reactions=self.store.reactions(k, room, mid)))
+            if room.startswith(("#", "&")): self.layer.register(room, nick, text, ts.timestamp(), mid, mine=(nick == me))
             if nick != me and (hl or (room not in ("*server*",) and not room.startswith(("#", "&")))):
                 self.win.notify(key, nick, text, "mention" if hl else "dm")
             if key == self.win.active and sess.client and sess.client.has("draft/read-marker", "read-marker") and m.server_time:
@@ -232,12 +243,14 @@ class Bridge:
 
     def _on_typing(self, key: str, active: bool):
         net, _, room = key.partition("/"); s = self.sessions.get(net)
+        if room.startswith(("#", "&")) and self.layer.ready: asyncio.get_event_loop().create_task(self.layer.send_presence("typing" if active else "online"))
         if s and s.client and s.state == "connected" and s.net.ircv3 and room.startswith(("#", "&")):
             asyncio.get_event_loop().create_task(s.client.typing(room, "active" if active else "done"))
 
     def _on_room_changed(self, key: str):
         self.win.rail.set_members(self._members.get(key, [])); self.win.typing.setText("")
         net, _, room = key.partition("/"); s = self.sessions.get(net)
+        if room.startswith(("#", "&")) and self.layer.ready: asyncio.get_event_loop().create_task(self._layer_enter(key, room))
         if s and s.client and s.state == "connected" and s.net.ircv3 and s.client.has("draft/read-marker", "read-marker") and room.startswith("#"):
             newest = self.store.newest_ts(net, room)
             if newest:
@@ -279,20 +292,92 @@ class Bridge:
                     for r in hits[:20]:
                         self.win.add(key, Item("system", text=f"{r['ts'][:16]} {r['room']} <{r['nick']}> {r['text'][:140]}"))
                     return
-                if cmd == "ask":  # Axiom door: HOME rooms carry Axiom's !ask (rate-limited 1/min/channel)
-                    if net != "home": self.win.add(key, Item("system", text="/ask works on HOME rooms only (Axiom lives there)")); return
+                if cmd == "ask":  # Axiom door: Axiom (cablepair) sits in #warheatmap on EFnet and answers !ask (rate-limited 1/min/channel)
+                    if room.lower() != "#warheatmap": self.win.add(key, Item("system", text="/ask works in #warheatmap (Axiom lives there)")); return
                     await s.client.privmsg(room, f"!ask {rest.strip()}"); return
+                if cmd == "react" and not (s.client.has("message-tags") and s.client.cfg.client_tags):  # plain IRC: the layer carries it
+                    mid, _, emoji = rest.strip().partition(" "); emoji = emoji or "👍"
+                    if not self.layer.ready: self.win.add(key, Item("system", text="reactions need the VoxTerrae Layer (Settings → Layer, then /layer verify)")); return
+                    if await self.layer.react(room, mid, emoji): self.store.react(net, room, mid, s.client.nick, emoji); self.win.models[key].react(mid, emoji)
+                    else: self.win.add(key, Item("system", sub="error", text="reaction not sent (layer)"))
+                    return
                 if cmd == "react" and s.client.has("message-tags") and s.client.cfg.client_tags:  # /react <msgid> <emoji>
                     mid, _, emoji = rest.strip().partition(" ")
                     await s.client.react(room, mid, emoji or "👍"); self.store.react(net, room, mid, s.client.nick, emoji or "👍")
                     self.win.models[key].react(mid, emoji or "👍"); return
                 if cmd == "reply":  # /reply <msgid> text
                     mid, _, body = rest.strip().partition(" ")
-                    await s.client.privmsg(room, body, reply_to=mid); return
+                    if s.client.has("message-tags") and s.client.cfg.client_tags: await s.client.privmsg(room, body, reply_to=mid); return
+                    parent = self.store.get(net, room, mid)   # plain IRC: a visible quote line for everyone, the link for layer users
+                    if parent: await s.client.privmsg(room, quote_line(parent["nick"], parent["text"]))
+                    lid = await self._say_plain(s, net, room, key, body)
+                    if parent and lid:
+                        it = next((x for x in self.win.models[key].items if x.msgid == lid), None)
+                        if it: it.reply_to_nick, it.reply_to_text = parent["nick"], parent["text"]
+                        asyncio.get_event_loop().create_task(self.layer.link_reply(room, lid, mid))
+                    return
+                if cmd == "layer":
+                    sub = rest.strip().lower()
+                    if sub in ("", "status"): self.win.add(key, Item("system", text=f"layer: {'on' if self.layer.enabled else 'off'} · {'verified as ' + self.layer.nick if self.layer.ready else 'not verified'}" + (f" · last error: {self.layer.last_error}" if self.layer.last_error else ""))); return
+                    if sub == "verify": self.layer.enabled = True; asyncio.get_event_loop().create_task(self.layer.claim(s.client.nick)); return
+                    if sub == "off": self.layer.enabled = False; await self.layer.unwatch(); self.win.add(key, Item("system", text="layer: off for this session (Settings → Layer to change the default)")); return
+                    if sub == "wipe":
+                        ok = await self.layer.wipe(); self.win.add(key, Item("system", text="layer: everything about you was erased, a new identity will be made next time" if ok else "layer: wipe failed (not verified?)")); return
+                    self.win.add(key, Item("system", text="usage: /layer status | verify | off | wipe")); return
+                if cmd == "profile":
+                    arg = rest.strip()
+                    if arg.lower() == "edit": self.win.open_profile_editor(self.layer); return
+                    prof = await self.layer.get_profile(arg or s.client.nick)
+                    if not prof: self.win.add(key, Item("system", text=f"no VoxTerrae profile for {arg or s.client.nick}")); return
+                    for line in profile_card(prof): self.win.add(key, Item("system", text=line))
+                    return
+                if cmd == "upload":
+                    d = await self.layer.upload_image(rest.strip(), room)
+                    if d: await self._say_plain(s, net, room, key, f"{self.layer.base}{d['url']}")
+                    else: self.win.add(key, Item("system", sub="error", text="upload failed (png/jpeg/webp/gif up to 4 MiB, layer must be verified)"))
+                    return
                 self.win.add(key, Item("system", sub="error", text=f"unknown command /{cmd} (try /help)")); return
-            mid = await s.client.privmsg(room, text)
-            if not s.client.has("echo-message"):  # classic network: show + store our own line locally
-                now = datetime.now().astimezone(); lid = local_msgid(net, room, s.client.nick, now.astimezone(timezone.utc).isoformat(), text)
-                self.store.add(net, room, lid, now, s.client.nick, text)
-                self.win.add(key, Item("msg", nick=s.client.nick, text=text, ts=now, msgid=lid, is_me=True))
+            await self._say_plain(s, net, room, key, text)
         asyncio.get_event_loop().create_task(go())
+
+    async def _say_plain(self, s, net: str, room: str, key: str, text: str):
+        mid = await s.client.privmsg(room, text)
+        if not s.client.has("echo-message"):  # classic network: show + store our own line locally
+            now = datetime.now().astimezone(); lid = local_msgid(net, room, s.client.nick, now.astimezone(timezone.utc).isoformat(), text)
+            self.store.add(net, room, lid, now, s.client.nick, text)
+            self.win.add(key, Item("msg", nick=s.client.nick, text=text, ts=now, msgid=lid, is_me=True))
+            if room.startswith(("#", "&")): self.layer.register(room, s.client.nick, text, now.timestamp(), lid, mine=True)
+            return lid
+        return mid
+
+    # ---------------- VoxTerrae Layer glue ----------------
+    def _on_layer_connected(self, nick: str):
+        """Once per connect: claim the nick through Axiom's NOTICE code."""
+        if self.layer.enabled and self.layer.key and self._claimed_for != nick.lower():
+            self._claimed_for = nick.lower(); asyncio.get_event_loop().create_task(self.layer.claim(nick))
+    async def _layer_after_verify(self):
+        if self.win.active: await self._layer_enter(self.win.active, self.win.active.partition("/")[2])
+    async def _layer_enter(self, key: str, room: str):
+        await self.layer.watch(room)
+        net = key.partition("/")[0]
+        for r in await self.layer.fetch_reactions(room):
+            mid = self.layer.msgid_of(room, r.get("vid", ""))
+            if mid and key in self.win.models and self.store.react(net, room, mid, r.get("nick", ""), r.get("emoji", "")):
+                self.win.models[key].react(mid, r.get("emoji", ""))
+    def _layer_reaction(self, room: str, mid: str, emoji: str, nick: str, on: bool):
+        for key, model in self.win.models.items():
+            net, _, r = key.partition("/")
+            if r.lower() == room and on and nick.lower() != (self.layer.nick or "").lower() and self.store.react(net, r, mid, nick, emoji): model.react(mid, emoji)
+    def _layer_reply(self, room: str, child: str, parent: str, nick: str):
+        for key, model in self.win.models.items():
+            net, _, r = key.partition("/")
+            if r.lower() != room: continue
+            pr = self.store.get(net, r, parent); it = next((x for x in model.items if x.msgid == child), None)
+            if it and pr and not it.reply_to_nick:
+                it.reply_to_nick, it.reply_to_text = pr["nick"], pr["text"]; i = model.items.index(it); model.dataChanged.emit(model.index(i), model.index(i))
+    def _layer_presence(self, room: str, people: list):
+        if self.win.active.partition("/")[2].lower() == room and people:
+            self.win.add(self.win.active, Item("system", text=f"VoxTerrae users here: {', '.join(sorted(p.get('nick', '') for p in people))}"))
+    def _layer_typing(self, room: str, nick: str, active: bool):
+        if self.win.active.partition("/")[2].lower() == room and nick.lower() != (self.layer.nick or "").lower():
+            self.win.typing.setText(f"{nick} is typing…" if active else "")

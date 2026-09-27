@@ -70,24 +70,24 @@ def test_prefs_round_trip_and_floor(tmp_path):
 
 def test_window_badges_banner_empty_state_and_jump(app):
     w = MainWindow("darkops"); w.resize(1200, 700)
-    g = [("HOME", "connected", ["home/*server*", "home/#warheatmap", "home/#example"]), ("EFNET", "connecting irc.efnet.nl:6697", ["efnet/*server*"])]
-    w.set_groups(g); w.show_room("home/#warheatmap")
+    g = [("EFNET", "connecting irc.efnet.nl:6697", ["efnet/*server*", "efnet/#warheatmap", "efnet/#example"])]
+    w.set_groups(g); w.show_room("efnet/#warheatmap")
     assert w.empty.isVisibleTo(w.view_wrap) is True                                          # nothing in the room yet
-    w.add("home/#warheatmap", Item("msg", nick="a", text="hi", ts=datetime.now(timezone.utc), msgid="a1"))
+    w.add("efnet/#warheatmap", Item("msg", nick="a", text="hi", ts=datetime.now(timezone.utc), msgid="a1"))
     assert w.empty.isVisibleTo(w.view_wrap) is False
-    w.add("home/#example", Item("msg", nick="peer", text="pete look", ts=datetime.now(timezone.utc), msgid="x1", highlight=True))
-    w.add("home/#example", Item("msg", nick="peer", text="again", ts=datetime.now(timezone.utc), msgid="x2"))
-    assert (w.rooms._unread["home/#example"], w.rooms._mention["home/#example"]) == (2, 1)   # unread counts both, mention counts one
-    assert w.rooms.next_unread() == "home/#example"
+    w.add("efnet/#example", Item("msg", nick="peer", text="pete look", ts=datetime.now(timezone.utc), msgid="x1", highlight=True))
+    w.add("efnet/#example", Item("msg", nick="peer", text="again", ts=datetime.now(timezone.utc), msgid="x2"))
+    assert (w.rooms._unread["efnet/#example"], w.rooms._mention["efnet/#example"]) == (2, 1)   # unread counts both, mention counts one
+    assert w.rooms.next_unread() == "efnet/#example"
     w.show_room("efnet/*server*"); assert w.banner.isVisibleTo(w.chat) is True and "connecting" in w.banner_text.text()
     w.set_net_state("efnet", "connected", "EFNET"); assert w.banner.isVisibleTo(w.chat) is False
     w.set_lag("efnet", 118); assert w.net_chips["efnet"].text() == "EFNET  118 ms"
-    w.show_room("home/#example"); assert (w.rooms._unread["home/#example"], w.rooms._mention["home/#example"]) == (0, 0)
-    w.set_topic("home/#example", "a topic"); w.rail.set_members(["@ a", "b"]); assert w.meta.text() == "2 here  ·  a topic"
+    w.show_room("efnet/#example"); assert (w.rooms._unread["efnet/#example"], w.rooms._mention["efnet/#example"]) == (0, 0)
+    w.set_topic("efnet/#example", "a topic"); w.rail.set_members(["@ a", "b"]); assert w.meta.text() == "2 here  ·  a topic"
     w.rooms.collapsed.add("efnet"); w.rooms.set_groups(g, w.active); assert "efnet/*server*" not in [w.rooms.item(i).data(Qt.UserRole) for i in range(w.rooms.count())]
     w.rooms.collapsed.clear(); w.rooms.set_groups(g, w.active); assert "efnet/*server*" in [w.rooms.item(i).data(Qt.UserRole) for i in range(w.rooms.count())]
-    w.open_room("home/maya_k", "HOME"); assert w.active == "home/maya_k" and w.title.text() == "maya_k"
-    w.close_room("home/maya_k"); assert w.active == "home/#warheatmap"
+    w.open_room("efnet/maya_k", "EFNET"); assert w.active == "efnet/maya_k" and w.title.text() == "maya_k"
+    w.close_room("efnet/maya_k"); assert w.active == "efnet/#warheatmap"
     w.prefs.compact = True; w.apply_prefs(w.prefs); assert w.delegate.compact is True
     w._zoom(1); assert w.delegate.body_px == 15; w._zoom(0); assert w.delegate.body_px == 14
-    sent = []; w.send_text.connect(lambda k, t: sent.append((k, t))); w.composer.setText("a\nb"); w._send(); assert sent == [("home/#warheatmap", "a"), ("home/#warheatmap", "b")]   # multi-line splits into IRC lines
+    sent = []; w.send_text.connect(lambda k, t: sent.append((k, t))); w.composer.setText("a\nb"); w._send(); assert sent == [("efnet/#warheatmap", "a"), ("efnet/#warheatmap", "b")]   # multi-line splits into IRC lines

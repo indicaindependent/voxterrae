@@ -19,4 +19,4 @@ python -m voxterrae.app
 Build your own portable exe on Windows: `powershell -ExecutionPolicy Bypass -File build\build_win.ps1`. The script runs the unit tests, builds `dist\VoxTerrae.exe`, prints its SHA-256 and writes a smoke render.
 
 ## Requirements
-Windows 10 1809 or later (Windows 11 recommended), about 120 MB of disk for the extracted runtime, outbound TCP 6697 (TLS) to `irc.warheatmap.app` and the EFnet servers. Port 6667 is used only as a last resort on EFnet.
+Windows 10 1809 or later (Windows 11 recommended), about 120 MB of disk for the extracted runtime, outbound TCP 6697 (TLS) to the EFnet servers. Port 6667 is used only as a last resort on EFnet.

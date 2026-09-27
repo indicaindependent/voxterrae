@@ -1,32 +1,22 @@
-"""Pete's channel law, asserted offline so a plain `pytest` enforces it.
+"""Autojoin law (Pete, Sep 20 2026; amended Sep 26 2026 when the HOME network was retired):
+VoxTerrae auto-joins exactly ONE room anywhere: #warheatmap on EFnet. No other network is built in,
+and no other channel name may appear in the built-in configuration."""
+from voxterrae.irc.networks import BUILTIN, EFNET
 
-Standing instruction (Sep 20 2026): #warheatmap on HOME is the ONLY room any network
-auto-joins, on any server, ever. Before this file existed that rule was checked only by
-live-gated code -- and test_live_dual_network.py overrides EFNET's autojoin with
-replace(EFNET, autojoin=[]) before connecting, so it could not have caught a bad default
-even when run. A rule with no test that runs by default is a rule waiting to regress.
-"""
-from voxterrae.irc.networks import EFNET, HOME
+def test_only_efnet_is_built_in():
+    assert [n.key for n in BUILTIN] == ["efnet"], f"BUILTIN must be EFnet only, got {[n.key for n in BUILTIN]!r}"
 
+def test_efnet_autojoins_only_warheatmap():
+    assert EFNET.autojoin == ["#warheatmap"], f"EFnet must auto-join exactly #warheatmap, got {EFNET.autojoin!r}"
+    assert EFNET.home_channel == "#warheatmap"
 
-def test_home_autojoins_only_warheatmap():
-    assert HOME.autojoin == ["#warheatmap"], (
-        f"HOME must auto-join exactly #warheatmap, got {HOME.autojoin!r}"
-    )
+def test_no_other_channel_names_in_builtins():
+    for net in BUILTIN:
+        for ch in net.autojoin:
+            assert ch.lower() == "#warheatmap", f"{net.key} carries a foreign channel {ch!r}"
 
-
-def test_efnet_autojoins_nothing():
-    assert EFNET.autojoin == [], (
-        f"EFnet must auto-join NOTHING; got {EFNET.autojoin!r}"
-    )
-    assert not EFNET.home_channel.startswith("#"), (
-        f"EFnet home_channel must be a network buffer, not a room; got {EFNET.home_channel!r}"
-    )
-
-
-def test_no_network_autojoins_any_other_room():
-    for net in (HOME, EFNET):
-        for room in net.autojoin:
-            assert room == "#warheatmap", (
-                f"{net.key if hasattr(net,'key') else net}: unexpected autojoin room {room!r}"
-            )
+def test_no_home_network_remains():
+    import voxterrae.irc.networks as n
+    assert not hasattr(n, "HOME"), "HOME network object must be gone (retired 2026-09-26)"
+    for net in BUILTIN:
+        for s in net.servers: assert "warheatmap.app" not in s.host

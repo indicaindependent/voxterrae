@@ -22,6 +22,8 @@ class Prefs:
     fold_presence: bool = True      # fold join/part/quit lines
     confirm_links: bool = False     # ask before opening a link in the browser
     update_check: bool = True
+    layer_enabled: bool = True      # the VoxTerrae Layer (profiles, reactions, replies over plain IRC)
+    layer_consent: bool = False     # the one-screen consent was shown once
 
     @classmethod
     def load(cls, s: QSettings) -> "Prefs":
@@ -71,11 +73,16 @@ class SettingsDialog(QDialog):
         self.links = QCheckBox("Ask before opening links in the browser"); self.links.setChecked(prefs.confirm_links); wf.addRow("", self.links)
         self.upd = QCheckBox("Check voxterrae.app for a newer version at launch (one GET, no identifiers)"); self.upd.setChecked(prefs.update_check); wf.addRow("", self.upd)
         tabs.addTab(w, "Window and privacy")
+        # Layer
+        L = QWidget(); lf = QFormLayout(L)
+        self.layer_on = QCheckBox("Use the VoxTerrae Layer (profiles, reactions, replies, who is here). Text never leaves IRC."); self.layer_on.setChecked(prefs.layer_enabled); lf.addRow("", self.layer_on)
+        ln = QLabel("Your nick is verified through a one-time code sent over IRC by cablepair. Edit your profile with /profile edit, look someone up with /profile nick, erase everything the layer holds about you with /layer wipe."); ln.setWordWrap(True); ln.setObjectName("hint"); lf.addRow("", ln)
+        tabs.addTab(L, "Layer")
         bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel | QDialogButtonBox.Apply); lay.addWidget(bb)
         bb.accepted.connect(lambda: (self._apply(), self.accept())); bb.rejected.connect(self.reject); bb.button(QDialogButtonBox.Apply).clicked.connect(self._apply)
     def _apply(self):
         p = self.prefs
         p.handle = self.handle.text().strip(); p.theme = self.theme.currentText(); p.font_px = self.font_px.value(); p.compact = self.compact.isChecked(); p.show_time_always = self.times.isChecked()
         p.fold_presence = self.fold.isChecked(); p.show_rail = self.rail.isChecked(); p.notify_mentions = self.n_m.isChecked(); p.notify_dms = self.n_d.isChecked(); p.notify_sound = self.n_s.isChecked()
-        p.close_to_tray = self.tray.isChecked(); p.start_minimized = self.startmin.isChecked(); p.confirm_links = self.links.isChecked(); p.update_check = self.upd.isChecked()
+        p.layer_enabled = self.layer_on.isChecked(); p.close_to_tray = self.tray.isChecked(); p.start_minimized = self.startmin.isChecked(); p.confirm_links = self.links.isChecked(); p.update_check = self.upd.isChecked()
         self.applied.emit(p)

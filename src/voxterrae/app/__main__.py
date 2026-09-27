@@ -46,6 +46,9 @@ def main(argv=None):
     def start_live(handle: str):
         handle = (handle or "").strip() or prefs.handle or _default_handle()
         prefs.handle = handle; prefs.save(settings); settings.setValue("handle", handle)
+        if not prefs.layer_consent and not (a.demo or a.shot):
+            from voxterrae.app.layer_ui import ConsentDialog
+            d = ConsentDialog(win); d.exec(); prefs.layer_enabled = d.enabled(); prefs.layer_consent = True; prefs.save(settings)
         state["bridge"] = Bridge(win, handle); state["bridge"].start()
         win.stack.setCurrentWidget(win.chat)
         if not os.environ.get("VOXTERRAE_NO_UPDATE_CHECK") and prefs.update_check:

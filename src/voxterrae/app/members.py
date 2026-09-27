@@ -35,7 +35,7 @@ class _Delegate(QStyledItemDelegate):
         painter.restore()
 
 class MemberList(QWidget):
-    mention = Signal(str); message = Signal(str); whois = Signal(str)
+    mention = Signal(str); message = Signal(str); whois = Signal(str); profile = Signal(str)
     def __init__(self, p: Palette, parent=None):
         super().__init__(parent); self.p = p; self._all: List[str] = []; self.me = ""
         lay = QVBoxLayout(self); lay.setContentsMargins(0, 0, 0, 0); lay.setSpacing(6)
@@ -64,6 +64,7 @@ class MemberList(QWidget):
         a = QAction(f"Mention {nick}", m); a.triggered.connect(lambda: self.mention.emit(nick)); m.addAction(a)
         b = QAction("Message", m); b.triggered.connect(lambda: self.message.emit(nick)); m.addAction(b)
         w = QAction("Whois", m); w.triggered.connect(lambda: self.whois.emit(nick)); m.addAction(w)
+        pr = QAction("VoxTerrae profile", m); pr.triggered.connect(lambda: self.profile.emit(nick)); m.addAction(pr)
         m.addSeparator(); c = QAction("Copy nick", m); c.triggered.connect(lambda: QGuiApplication.clipboard().setText(nick)); m.addAction(c)
         if prefix in RANKS: m.addSeparator(); r = QAction(RANKS[prefix][1], m); r.setEnabled(False); m.addAction(r)
         m.exec(self.list.viewport().mapToGlobal(pos))

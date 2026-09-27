@@ -45,7 +45,7 @@ class ClientConfig:
     realname: str = "VoxTerrae"
     sasl_user: Optional[str] = None
     sasl_pass: Optional[str] = None
-    tls_verify: str = "strict"            # "strict" (CA-verified, HOME) | "tofu" (self-signed pinned by SHA-256, EFnet)
+    tls_verify: str = "strict"            # "strict" (CA-verified, e.g. irc.efnet.nl) | "tofu" (self-signed pinned by SHA-256, most EFnet servers)
     pinned_fingerprint: Optional[str] = None  # sha256 hex of the leaf cert when tls_verify == "tofu"
     client_tags: bool = True              # send +typing/+draft/react etc. (False on EFnet even if a server advertised tags)
     connect_timeout: float = 15.0

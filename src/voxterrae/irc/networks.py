@@ -1,5 +1,6 @@
-"""Built-in networks. VoxTerrae is hard-wired to two: HOME (irc.warheatmap.app) and EFnet.
-Both connect at launch. Everything here is public information (hostnames, channels)."""
+"""Built-in networks. Since 0.2.0 VoxTerrae is hard-wired to ONE network: EFnet.
+The project-run HOME network (irc.warheatmap.app, Ergo) was retired on Sep 26 2026; #warheatmap on EFnet is home.
+Everything here is public information (hostnames, channels)."""
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
@@ -24,12 +25,6 @@ class Network:
     nick_suffix: str = ""        # appended to the handle to avoid collisions on big networks
     blurb: str = ""
 
-HOME = Network(
-    key="home", name="HOME · warheatmap", ircv3=True, link_previews=True, sasl=True,
-    servers=[Server("irc.warheatmap.app", 6697, True, "strict")],
-    autojoin=["#warheatmap"], home_channel="#warheatmap",
-    blurb="The WarHeatMap community network (Ergo, IRCv3). History, reactions, read markers.",
-)
 # Measured Sep 20 2026 from the sandbox: irc.efnet.nl presents a CA-signed cert on 6697; prison.net,
 # underworld.no, choopa.net and irc.efnet.org present SELF-SIGNED certs on 6697 (so: tofu pinning), and
 # prison.net also answers plaintext 6667 (kept last, plaintext is the last resort, never the default).
@@ -42,8 +37,9 @@ EFNET = Network(
         Server("irc.choopa.net", 6697, True, "tofu"),
         Server("irc.prison.net", 6667, False, "strict"),
     ],
-    autojoin=[],                 # Pete's rule (Sep 20 2026): #warheatmap on HOME is the ONLY room any network auto-joins
-    home_channel="*server*",     # the network buffer; you /join what you like
+    autojoin=["#warheatmap"],    # the ONE room VoxTerrae joins for you (Pete's rule, updated Sep 26 2026: EFnet is home)
+    home_channel="#warheatmap",
     blurb="The 1990 original. No services, no history: what you see is what was said while you were here.",
 )
-BUILTIN: List[Network] = [HOME, EFNET]
+BUILTIN: List[Network] = [EFNET]
+HOME_RETIRED_NOTE = "The HOME network (irc.warheatmap.app) was retired on 2026-09-26; #warheatmap lives on EFnet."

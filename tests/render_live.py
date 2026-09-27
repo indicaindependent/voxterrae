@@ -1,5 +1,5 @@
-"""Render the REAL app on REAL connections (HOME + EFnet) for the hub screenshots. Offscreen Qt.
-   python tests/render_live.py out_live.png out_reply.png   (local proofs only; the repo ships demo renders, which contain no real users)"""
+"""Render the REAL app on REAL connections (EFnet) for the hub screenshots. Offscreen Qt.
+   python tests/render_live.py out_live.png   (local proofs only; the repo ships demo renders, which contain no real users)"""
 import os, sys
 if os.environ.get("VOXTERRAE_LIVE_TESTS") != "1":
     sys.exit("live proof: connects to real IRC networks; set VOXTERRAE_LIVE_TESTS=1 to run")
@@ -9,31 +9,22 @@ import qasync
 from voxterrae.app.main_window import MainWindow
 from voxterrae.app.bridge import Bridge
 from voxterrae.irc import IrcClient, ClientConfig
-from voxterrae.irc.networks import HOME, EFNET
-from _room import throwaway_room
-ROOM = throwaway_room()
-out_live, out_reply = sys.argv[1], sys.argv[2]
+from voxterrae.irc.networks import EFNET
+
+
+out_live = sys.argv[1]
 handle = "vtrender" + secrets.token_hex(1); token = secrets.token_hex(2)
 app = QApplication([]); loop = qasync.QEventLoop(app); asyncio.set_event_loop(loop)
-win = MainWindow(); win.resize(1280, 720); win.stack.setCurrentWidget(win.chat); win.show(); br = Bridge(win, handle, [HOME, EFNET])
+win = MainWindow(); win.resize(1280, 720); win.stack.setCurrentWidget(win.chat); win.show(); br = Bridge(win, handle, [EFNET])
 async def run():
     br.start()
     for _ in range(90):
         await asyncio.sleep(0.5)
         if all(s.state == "connected" for s in br.sessions.values()): break
-    await asyncio.sleep(6); win.show_room("home/#warheatmap"); app.processEvents(); win.grab().save(out_live)
-    # reply-mode shot in the probe room: a peer posts, mentions us; we reply + react; reply strip open on the last line
-    await br.sessions["home"].client.join(ROOM); await asyncio.sleep(2); win.show_room("home/"+ROOM)
-    other = IrcClient(ClientConfig(host="irc.warheatmap.app", nick="cartographer" + secrets.token_hex(1))); await other.connect(); await other.join(ROOM); await asyncio.sleep(1.5)
-    await other.privmsg(ROOM, "new event card up for the Hormuz lane, anyone watching the tanker count tonight?"); await asyncio.sleep(1)
-    pmid = await other.privmsg(ROOM, f"{handle} the map shows 3 transits since 18:00, does the desk brief agree? {token}"); await asyncio.sleep(2)
-    items = [i for i in win.models["home/"+ROOM].items if i.kind == "msg" and token in i.text]
-    win.set_reply(items[0]); win.composer.setText("checking the 20:00 brief now, it counted 4 with one turnaround"); win._send(); await asyncio.sleep(2)
-    win.send_react.emit("home/"+ROOM, items[0].msgid, "👀"); await asyncio.sleep(1.5)
-    await other.privmsg(ROOM, "that turnaround is the one the OSINT thread flagged, good catch"); await asyncio.sleep(1.5)
-    last = [i for i in win.models["home/"+ROOM].items if i.kind == "msg"][-1]
-    win.set_reply(last); win.composer.setText("pinning it to the room with /ask"); app.processEvents(); win.grab().save(out_reply)
-    print("RENDER:", {"title": win.windowTitle(), "nets": {k: s.state for k, s in br.sessions.items()}, "rooms": win.rooms.count() if hasattr(win.rooms, 'count') else 'n/a', "reactions": items[0].reactions})
-    await other.quit(); await br.stop(); app.quit()
+    await asyncio.sleep(6); win.show_room("efnet/#warheatmap"); app.processEvents(); win.grab().save(out_live)
+    # (0.2.0) the reply/react shot needed the retired IRCv3 HOME network; plain EFnet has no message ids, so only the live room shot is rendered
+
+    print("RENDER:", {"title": win.windowTitle(), "nets": {k: s.state for k, s in br.sessions.items()}, "rooms": win.rooms.count() if hasattr(win.rooms, "count") else "n/a"})
+    await br.stop(); app.quit()
 with loop:
     loop.create_task(run()); loop.run_forever()

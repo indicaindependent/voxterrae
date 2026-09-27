@@ -37,7 +37,7 @@ class Welcome(QWidget):
         self.handle = QLineEdit(); self.handle.setObjectName("composer"); self.handle.setPlaceholderText("pick a handle (optional)"); self.handle.setFixedWidth(360); self.handle.setAlignment(Qt.AlignCenter); self.handle.setMaxLength(16)
         btn = QPushButton("ENTER #WARHEATMAP"); btn.setObjectName("primary"); btn.setFixedWidth(360); btn.setCursor(Qt.PointingHandCursor); btn.setDefault(True)
         btn.clicked.connect(lambda: self.enter.emit(self.handle.text().strip())); self.handle.returnPressed.connect(btn.click)
-        note = QLabel("live rooms on irc.warheatmap.app · no account needed · TLS"); note.setObjectName("status"); note.setAlignment(Qt.AlignCenter)
+        note = QLabel("#warheatmap on EFnet · no account needed · TLS"); note.setObjectName("status"); note.setAlignment(Qt.AlignCenter)
         ver = QLabel(f"VoxTerrae {APP_VERSION} · MIT · voxterrae.app"); ver.setObjectName("hint"); ver.setAlignment(Qt.AlignCenter)
         for w in (mark, sub, self.handle, btn, note): lay.addWidget(w, 0, Qt.AlignCenter)
         lay.addSpacing(18); lay.addWidget(ver, 0, Qt.AlignCenter)
@@ -139,7 +139,7 @@ class MainWindow(QMainWindow):
         self.welcome = Welcome(self.p); self.stack.addWidget(self.welcome)
         self.chat = QWidget(); self.stack.addWidget(self.chat); self._build_chat(); self._build_status()
         self.welcome.enter.connect(lambda h: self.stack.setCurrentWidget(self.chat))
-        self.models: Dict[str, TimelineModel] = {}; self.active = "home/#warheatmap"; self.net_labels: Dict[str, str] = {}; self.net_state: Dict[str, str] = {}; self.topics: Dict[str, str] = {}
+        self.models: Dict[str, TimelineModel] = {}; self.active = "efnet/#warheatmap"; self.net_labels: Dict[str, str] = {}; self.net_state: Dict[str, str] = {}; self.topics: Dict[str, str] = {}
         self.reply_to: Optional[Item] = None; self.unread_total = 0; self.update_state = {"status": "unchecked"}; self.update_result.connect(self.on_update_result)
         self._pending_below = 0; self.me_nick = ""; self._quitting = False
         if (g := self.settings.value("geometry")) is not None: self.restoreGeometry(g)
@@ -212,7 +212,7 @@ class MainWindow(QMainWindow):
         self.rail = MapRail(self.p); self.rail.setMinimumWidth(220); self.rail.setMaximumWidth(360); self.split.addWidget(self.rail)
         self.rail.members.mention.connect(lambda n: (self.composer.setText((self.composer.text() + " " if self.composer.text() else "") + f"{n}: " if not self.composer.text() else self.composer.text() + f"{n} "), self.composer.setFocus()))
         self.rail.members_changed.connect(self._refresh_meta)
-        self.rail.members.message.connect(lambda n: self.open_dm.emit(self.active.split("/", 1)[0], n)); self.rail.members.whois.connect(lambda n: self.whois.emit(self.active.split("/", 1)[0], n))
+        self.rail.members.message.connect(lambda n: self.open_dm.emit(self.active.split("/", 1)[0], n)); self.rail.members.whois.connect(lambda n: self.whois.emit(self.active.split("/", 1)[0], n)); self.rail.members.profile.connect(lambda n: self.send_text.emit(self.active, f"/profile {n}"))
         self.split.setStretchFactor(0, 0); self.split.setStretchFactor(1, 1); self.split.setStretchFactor(2, 0); self.split.setSizes([230, 760, 270])
     def _build_status(self):
         sb = QStatusBar(); sb.setSizeGripEnabled(False); self.setStatusBar(sb)
@@ -233,6 +233,9 @@ class MainWindow(QMainWindow):
         self.prefs = p; self.setStyleSheet(qss(self.p, p.font_px)); self.delegate.set_font_px(p.font_px); self.delegate.compact = p.compact; self.delegate.show_time_always = p.show_time_always
         self.rail.setVisible(p.show_rail); self.view.doItemsLayout(); self.view.scrollToBottom(); p.save(self.settings)
         if not first: self.prefs_changed.emit(p)
+    def open_profile_editor(self, layer):
+        from .layer_ui import ProfileEditor
+        ProfileEditor(layer, self).show()
     def open_settings(self):
         d = SettingsDialog(self.prefs, self); d.applied.connect(self.apply_prefs); d.exec()
     def toggle_rail(self):
@@ -271,7 +274,7 @@ class MainWindow(QMainWindow):
     def show_room(self, key: str, select: bool = False):
         changed = key != self.active   # set_groups() re-shows the active room on every roster change; that must not clear the badge
         self.active = key; name = room_display(key); kind = room_kind(key)
-        self.title.setText(name); self.title_icon.setPixmap(pixmap(kind, self.p.muted, 16)); self.delegate.home = key.startswith("home/")
+        self.title.setText(name); self.title_icon.setPixmap(pixmap(kind, self.p.muted, 16)); self.delegate.home = key.partition("/")[2].startswith(("#", "&"))   # hover Reply/React in any room: the layer carries them on plain IRC
         m = self.models.setdefault(key, TimelineModel())
         if self.view.model() is not m:
             self.view.setModel(m); m.rowsInserted.connect(self._rows_inserted)
@@ -300,7 +303,7 @@ class MainWindow(QMainWindow):
         self.show_room(key, select=True)
     def close_room(self, key: str):
         self.models.pop(key, None); self.rooms._unread.pop(key, None); self.rooms._mention.pop(key, None)
-        if self.active == key: self.show_room("home/#warheatmap" if "home/#warheatmap" in self.models else next(iter(self.models), "home/#warheatmap"), select=True)
+        if self.active == key: self.show_room("efnet/#warheatmap" if "efnet/#warheatmap" in self.models else next(iter(self.models), "efnet/#warheatmap"), select=True)
     def clear_view(self, key: str):
         self.models[key] = TimelineModel(); self.view.setModel(self.models[key]); self.models[key].rowsInserted.connect(self._rows_inserted); self._refresh_empty()
     # ---- scrolling / empty state -------------------------------------------------------------------------------------
@@ -390,7 +393,7 @@ class MainWindow(QMainWindow):
         it = self._item_at(pos)
         if not it: return
         m = QMenu(self)
-        if it.msgid and self.active.startswith("home/"):
+        if it.msgid:  # reply/react need a message id: IRCv3 networks or the VoxTerrae layer supply one
             r = QAction("Reply", m); r.triggered.connect(lambda: self.set_reply(it)); m.addAction(r)
             react = m.addMenu("React")
             for e in QUICK_REACTIONS:
@@ -408,7 +411,7 @@ class MainWindow(QMainWindow):
         m.exec(self.view.viewport().mapToGlobal(pos))
     def _on_view_click(self, idx):
         it = idx.data(Qt.UserRole)
-        if it and it.kind == "msg" and it.msgid and self.active.startswith("home/") and QApplication.keyboardModifiers() & Qt.ControlModifier:
+        if it and it.kind == "msg" and it.msgid and QApplication.keyboardModifiers() & Qt.ControlModifier:
             self.send_react.emit(self.active, it.msgid, "👍")   # Ctrl+click = quick 👍
     # ---- notifications --------------------------------------------------------------------------------------------
     def notify(self, room_key: str, nick: str, text: str, kind: str = "mention"):
@@ -426,19 +429,19 @@ class MainWindow(QMainWindow):
         u = getattr(self, "update_state", {})
         return f"VoxTerrae  ·  update {u['latest']} available" if u.get("status") == "newer" else "VoxTerrae"
     def on_update_result(self, r: dict):
-        """H3: one quiet system line in every HOME room plus the window title and a status-bar pill; never a modal, never a download."""
+        """H3: one quiet system line in every room plus the window title and a status-bar pill; never a modal, never a download."""
         self.update_state = r
         if r.get("status") != "newer": return
         line = f"VoxTerrae {r['latest']} is available (you run {APP_VERSION}): {r['url']}"
-        for key in list(self.models.keys()) or ["home/#warheatmap"]:
-            if key.startswith("home/"): self.add(key, Item("system", text=line))
+        for key in list(self.models.keys()) or ["efnet/#warheatmap"]:
+            if "/#" in key: self.add(key, Item("system", text=line))
         self.update_pill.setText(f"{r['latest']} available"); self.update_pill.setToolTip(r.get("url", "")); self.update_pill.show(); self.setWindowTitle(self._base_title())
     def open_about(self):
         d = QDialog(self); d.setWindowTitle("About VoxTerrae"); d.setFixedWidth(460); l = QVBoxLayout(d)
         mark = IconLabel("mark", self.p.phosphor, f"VOXTERRAE {APP_VERSION}", size=22, object_name="wordmark"); l.addWidget(mark)
         t = QTextBrowser(); t.setOpenExternalLinks(True); t.setFrameShape(QFrame.NoFrame); t.setFixedHeight(190)
         u = self.update_state; upd = f"Update {u['latest']} is available: <a href='{u['url']}'>{u['url']}</a>" if u.get("status") == "newer" else ("You are on the latest release." if u.get("status") == "current" else "Update check: not run this session.")
-        t.setHtml(f"<p style='color:{self.p.text}'>The door from the map to the room. An IRC client for <a style='color:{self.p.cyan}' href='{MAP}'>warheatmap.app</a>, hard-wired to HOME (irc.warheatmap.app) and EFnet.</p>"
+        t.setHtml(f"<p style='color:{self.p.text}'>The door from the map to the room. An IRC client for <a style='color:{self.p.cyan}' href='{MAP}'>warheatmap.app</a>, hard-wired to EFnet, where #warheatmap is home.</p>"
                   f"<p style='color:{self.p.muted}'>{upd}</p><p style='color:{self.p.muted}'>MIT licence · Qt via PySide6 under LGPLv3 · <a style='color:{self.p.cyan}' href='{SITE}'>voxterrae.app</a> · <a style='color:{self.p.cyan}' href='https://github.com/indicaindependent/voxterrae'>source</a> · <a style='color:{self.p.cyan}' href='{SITE}/docs/verify'>verify your download</a></p>"
                   f"<p style='color:{self.p.dim};font-size:12px'>Profile and logs: {plat.profile_dir()}</p>"); l.addWidget(t)
         b = QPushButton("Close"); b.clicked.connect(d.accept); l.addWidget(b, 0, Qt.AlignRight); d.exec()

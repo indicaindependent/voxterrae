@@ -1,0 +1,9 @@
+
+[dev]
+pytest>=8
+
+[ui]
+PySide6>=6.8
+qasync>=0.27
+keyring>=25
+cryptography>=43
